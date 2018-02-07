@@ -1,6 +1,7 @@
 use std::thread;
 use std::sync::{Arc, mpsc, Mutex};
 use std::sync::mpsc::{Sender, Receiver};
+use std::time::Duration;
 
 fn main() {
     UI::run();
@@ -44,22 +45,18 @@ impl Traffic {
 
 struct Simulation {
     //city: City,
-    working: Traffic,
-    master: Arc<Mutex<Option<Arc<Traffic>>>>,
+    traffic: MasterCopy<Traffic>,
 }
 
 impl Simulation {
 
-    fn new(vehicles: usize, master: Arc<Mutex<Option<Arc<Traffic>>>>) -> Simulation {
-        Simulation{ working: Traffic::new(vehicles), master }
+    fn new(vehicles: usize) -> Simulation {
+        Simulation{ traffic: MasterCopy::new(Traffic::new(vehicles)) }
     }
 
     fn step(&mut self) {
-        self.working.id += 1;
-        let mut in_master = self.master.lock().unwrap();
-        let master = self.working.clone();
-        let master = Arc::new(master);
-        *in_master = Some(Arc::clone(&master));
+        self.traffic.working.id += 1;
+        self.traffic.publish();
     }
 
 }
@@ -73,17 +70,18 @@ impl UI {
     fn run() {
         let city = City::from("city");
         let city = Arc::new(city);
-        let traffic_master = Arc::new(Mutex::new(None));
 
-        let mut sim = Simulation::new(1, Arc::clone(&traffic_master));
+        let mut sim = Simulation::new(1024*1024);
+        let traffic_master = Arc::clone(&sim.traffic.master);
         let sim_handle = thread::spawn(move || {
             loop {
                 sim.step();
+                thread::sleep(Duration::from_millis(1));
             }
         });
 
         
-        let mut graphics = Graphics { city: Some(city), traffic: LocalCopy::new(&traffic_master), i: 0 };
+        let mut graphics = Graphics { city: Some(city), traffic: LocalCopy::new(&traffic_master) };
         let graphics_handle = thread::spawn(move || {
             loop {
                 graphics.run();
@@ -98,7 +96,26 @@ impl UI {
 struct Graphics {
     city: Option<Arc<City>>,
     traffic: LocalCopy<Traffic>,
-    i: u32,
+}
+
+struct MasterCopy<T: Clone> {
+    working: T,
+    master: Arc<Mutex<Option<Arc<T>>>>,
+}
+
+impl <T: Clone> MasterCopy<T> {
+
+    fn new(t: T) -> MasterCopy<T> {
+        MasterCopy { working: t, master: Arc::new(Mutex::new(None)) }
+    }
+
+    fn publish(&mut self) {
+        let mut master = self.master.lock().unwrap();
+        let publish = self.working.clone();
+        let publish = Arc::new(publish);
+        *master = Some(Arc::clone(&publish));
+    }
+
 }
 
 struct LocalCopy<T> {
@@ -120,8 +137,6 @@ impl <T> LocalCopy<T> {
     }
 
 }
-
-
 
 impl Graphics{
     fn run(&mut self) {
