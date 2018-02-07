@@ -1,5 +1,5 @@
 use std::thread;
-use std::sync::{Arc, mpsc};
+use std::sync::{Arc, mpsc, Mutex};
 use std::sync::mpsc::{Sender, Receiver};
 
 fn main() {
@@ -24,46 +24,42 @@ impl City {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Vehicle {
     x: u32,
     y: u32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Traffic {
+    id: usize,
     vehicles: Vec<Vehicle>,
 }
 
 impl Traffic {
     fn new(size: usize) -> Traffic {
-        Traffic{ vehicles: (0..size).map(|i| Vehicle{ x: 0, y: 0 }).collect() }
+        Traffic{ id: 0, vehicles: (0..size).map(|i| Vehicle{ x: 0, y: 0 }).collect() }
     }
-}
-
-enum Message {
-    CityUpdated(Arc<City>),
-    TrafficUpdated(Arc<Traffic>),
 }
 
 struct Simulation {
     //city: City,
-    traffic: Traffic,
-    listeners: Vec<Sender<Message>>,
+    working: Traffic,
+    master: Arc<Mutex<Option<Arc<Traffic>>>>,
 }
 
 impl Simulation {
 
-    fn new(vehicles: usize) -> Simulation {
-        Simulation{ traffic: Traffic::new(vehicles), listeners: vec![] }
+    fn new(vehicles: usize, master: Arc<Mutex<Option<Arc<Traffic>>>>) -> Simulation {
+        Simulation{ working: Traffic::new(vehicles), master }
     }
 
     fn step(&mut self) {
-        let traffic_done = self.traffic.clone();
-        let traffic_done = Arc::new(traffic_done);
-        for listener in self.listeners.iter() {
-            listener.send(Message::TrafficUpdated(Arc::clone(&traffic_done)));
-        }
+        self.working.id += 1;
+        let mut in_master = self.master.lock().unwrap();
+        let master = self.working.clone();
+        let master = Arc::new(master);
+        *in_master = Some(Arc::clone(&master));
     }
 
 }
@@ -77,24 +73,22 @@ impl UI {
     fn run() {
         let city = City::from("city");
         let city = Arc::new(city);
+        let traffic_master = Arc::new(Mutex::new(None));
 
-        let (tx, rx) = mpsc::channel();
-        let mut sim = Simulation::new(1024);
-        sim.listeners.push(Sender::clone(&tx));
+        let mut sim = Simulation::new(1, Arc::clone(&traffic_master));
         let sim_handle = thread::spawn(move || {
             loop {
                 sim.step();
             }
         });
+
         
-        let mut graphics = Graphics { city: Some(city), traffic: None, rx, i: 0 };
+        let mut graphics = Graphics { city: Some(city), traffic: LocalCopy::new(&traffic_master), i: 0 };
         let graphics_handle = thread::spawn(move || {
             loop {
                 graphics.run();
             }
         });
-
-        tx.send(Message::CityUpdated(Arc::new(City::from("some other city"))));
 
         sim_handle.join();
 
@@ -103,28 +97,42 @@ impl UI {
 
 struct Graphics {
     city: Option<Arc<City>>,
-    traffic: Option<Arc<Traffic>>,
-    rx: Receiver<Message>,
+    traffic: LocalCopy<Traffic>,
     i: u32,
 }
+
+struct LocalCopy<T> {
+    local: Option<Arc<T>>,
+    master: Arc<Mutex<Option<Arc<T>>>>,
+}
+
+impl <T> LocalCopy<T> {
+
+    fn new(master: &Arc<Mutex<Option<Arc<T>>>>) -> LocalCopy<T> {
+        LocalCopy { local: None, master: Arc::clone(master) }
+    }
+
+    fn update(&mut self) {
+        match *self.master.lock().unwrap() {
+            Some(ref t) => self.local = Some(Arc::clone(t)),
+            None => self.local = None,
+        }
+    }
+
+}
+
+
 
 impl Graphics{
     fn run(&mut self) {
 
-        for message in self.rx.iter() {
-            match message {
-                Message::CityUpdated(c) => {
-                    println!("Updating city in Graphics");
-                    self.city = Some(c);
-                },
-                Message::TrafficUpdated(t) => {
-                    println!("Updating traffic in Graphics {}", self.i);
-                    self.traffic = Some(t);
-                    self.i += 1;
-                },
-                _ => panic!("Unsupported message"),
-            }
+        self.traffic.update();
+
+        match self.traffic.local {
+            Some(ref t) => println!("Drawing with traffic version {}", t.id),
+            None => println!("Drawing without traffic"),
         }
+
     }
 }
 
