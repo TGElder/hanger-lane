@@ -1,8 +1,8 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 pub struct Master<T: Clone> {
     pub master: T,
-    published: Arc<Mutex<Option<Arc<T>>>>,
+    published: Arc<RwLock<Option<Arc<T>>>>,
 }
 
 impl <T: Clone> Master<T> {
@@ -10,14 +10,14 @@ impl <T: Clone> Master<T> {
     pub fn new(t: T) -> Master<T> {
         Master {
             master: t,
-            published: Arc::new(Mutex::new(None)),
+            published: Arc::new(RwLock::new(None)),
         }
     }
 
     pub fn publish(&mut self) {
-        let mut published = self.published.lock().unwrap();
         let publish = self.master.clone();
         let publish = Arc::new(publish);
+        let mut published = self.published.write().unwrap();
         *published = Some(Arc::clone(&publish));
     }
 
@@ -25,7 +25,7 @@ impl <T: Clone> Master<T> {
 
 pub struct Local<T> {
     pub local: Option<Arc<T>>,
-    published: Arc<Mutex<Option<Arc<T>>>>,
+    published: Arc<RwLock<Option<Arc<T>>>>,
 }
 
 impl <T: Clone> Local<T> {
@@ -38,11 +38,10 @@ impl <T: Clone> Local<T> {
     }
 
     pub fn update(&mut self) {
-        match *self.published.lock().unwrap() {
+        match *self.published.read().unwrap() {
             Some(ref p) => {
                 if (match self.local {
                         Some(ref l) => !Arc::ptr_eq(p, l), // No point cloning the reference if it still points to the same value
-
                         None => true,
                     }
                 ) {
