@@ -1,5 +1,5 @@
 [package]
-name = "hanger-lane"
+name = "hanger_lane"
 version = "0.1.0"
 authors = ["Thomas Elder <tgelder@gmail.com>"]
 
