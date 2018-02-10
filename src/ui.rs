@@ -1,8 +1,8 @@
 use std::thread;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, mpsc};
 use std::time::Duration;
 use version::{Version, Publisher, Local};
-use simulation::Simulation;
+use simulation::{Simulation, SimulationMessage};
 use super::{City, Traffic};
 
 pub struct UI {
@@ -17,13 +17,12 @@ impl UI {
 
         let traffic = Arc::new(RwLock::new(None));
 
-        let mut sim = Simulation::new(&city, 1024*1024, &traffic);
+        let (sim_tx, sim_rx) = mpsc::channel();
+        let mut sim = Simulation::new(sim_rx, &city, 1024*1024, &traffic);
         let mut graphics = Graphics::new(&city, &traffic);
 
         let sim_handle = thread::spawn(move || {
-            loop {
-                sim.step();
-            }
+            sim.run();
         });
 
         
@@ -33,9 +32,15 @@ impl UI {
             }
         });
 
-        thread::sleep(Duration::from_secs(5));
+        thread::sleep(Duration::from_secs(1));
+        sim_tx.send(SimulationMessage::Start).unwrap();
+
+        thread::sleep(Duration::from_secs(1));
         let mut editor = Editor::new(&city);
         editor.run();
+
+        thread::sleep(Duration::from_secs(1));
+        sim_tx.send(SimulationMessage::Pause).unwrap();
 
         sim_handle.join();
 
@@ -62,15 +67,15 @@ impl Graphics{
         self.city.update();
         self.traffic.update();
 
-        match self.city.local {
-            Some(ref c) => println!("Drawing with city version {}", c.id),
-            None => println!("Drawing without city"),
-        }
+        //match self.city.local {
+        //    Some(ref c) => println!("Drawing with city version {}", c.id),
+        //    None => println!("Drawing without city"),
+        //}
 
-        match self.traffic.local {
-            Some(ref t) => println!("Drawing with traffic version {}", t.id),
-            None => println!("Drawing without traffic"),
-        }
+        //match self.traffic.local {
+        //    Some(ref t) => println!("Drawing with traffic version {}", t.id),
+        //    None => println!("Drawing without traffic"),
+        //}
 
     }
 }
