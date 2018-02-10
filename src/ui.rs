@@ -1,9 +1,11 @@
 use std::thread;
 use std::sync::{Arc, RwLock, mpsc};
 use std::time::Duration;
-use version::{Version, Publisher, Local};
+use version::Publisher;
 use simulation::{Simulation, SimulationMessage};
-use super::{City, Traffic};
+use super::City;
+use graphics::Graphics;
+use editor::Editor;
 
 pub struct UI {
 }
@@ -42,63 +44,9 @@ impl UI {
         thread::sleep(Duration::from_secs(1));
         sim_tx.send(SimulationMessage::Pause).unwrap();
 
-        sim_handle.join();
+        sim_handle.join().unwrap();
+        graphics_handle.join().unwrap();
 
-    }
-}
-
-struct Graphics {
-    city: Local<City>,
-    traffic: Local<Traffic>,
-}
-
-impl Graphics{
-
-    fn new(city: &Version<City>, traffic: &Version<Traffic>) -> Graphics {
-        Graphics {
-            city: Local::new(city),
-            traffic: Local::new(traffic),
-        }
-    }
-
-
-    fn run(&mut self) {
-
-        self.city.update();
-        self.traffic.update();
-
-        //match self.city.local {
-        //    Some(ref c) => println!("Drawing with city version {}", c.id),
-        //    None => println!("Drawing without city"),
-        //}
-
-        //match self.traffic.local {
-        //    Some(ref t) => println!("Drawing with traffic version {}", t.id),
-        //    None => println!("Drawing without traffic"),
-        //}
-
-    }
-}
-
-
-
-struct Editor {
-    city_publisher: Publisher<City>,
-}
-
-impl Editor {
-
-    fn new(city: &Version<City>) -> Editor {
-        Editor {
-            city_publisher: Publisher::new(city),
-        }
-    }
-
-    fn run(&mut self) {
-        let mut city = City::from("another city");
-        city.id = 1;
-
-        self.city_publisher.publish(&city);
     }
 }
 

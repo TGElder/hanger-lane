@@ -1,5 +1,7 @@
 mod version;
 mod simulation;
+mod graphics;
+mod editor;
 pub mod ui;
 
 #[derive(Clone, Debug)]
@@ -18,7 +20,7 @@ impl City {
         City{ id: 0, cells: (0..size).map(|i| Cell{ index: i}).collect() }
     }
 
-    fn from(file: &str) -> City {
+    fn from(_: &str) -> City {
         City::new(1048576)
     }
 }
@@ -37,6 +39,6 @@ pub struct Traffic {
 
 impl Traffic {
     fn new(size: usize) -> Traffic {
-        Traffic{ id: 0, vehicles: (0..size).map(|i| Vehicle{ x: 0, y: 0 }).collect() }
+        Traffic{ id: 0, vehicles: (0..size).map(|_| Vehicle{ x: 0, y: 0 }).collect() }
     }
 }

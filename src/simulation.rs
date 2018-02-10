@@ -46,10 +46,10 @@ impl Simulation {
                         },
                     }
                 },
-                TryRecvError => (),
+                _ => (),
             }
 
-            if (self.running) {
+            if self.running {
 
                 self.city.update();
 
