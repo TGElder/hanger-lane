@@ -12,14 +12,15 @@ impl UI {
     
     pub fn launch() {
         let city = City::from("city");
-        let city = Arc::new(city);
+        let mut city = Master::new(city);
+        city.publish();
 
-        let mut sim = Simulation::new(1024*1024);
-        let mut graphics = Graphics { city: Some(city), traffic: Local::new(&sim.traffic) };
+        let mut sim = Simulation::new(&city, 1024*1024);
+        let mut graphics = Graphics::new(&city, &sim.traffic);
+
         let sim_handle = thread::spawn(move || {
             loop {
                 sim.step();
-                thread::sleep(Duration::from_millis(1));
             }
         });
 
@@ -36,14 +37,29 @@ impl UI {
 }
 
 struct Graphics {
-    city: Option<Arc<City>>,
+    city: Local<City>,
     traffic: Local<Traffic>,
 }
 
 impl Graphics{
+
+    fn new(city: &Master<City>, traffic: &Master<Traffic>) -> Graphics {
+        Graphics {
+            city: Local::new(city),
+            traffic: Local::new(traffic),
+        }
+    }
+
+
     fn run(&mut self) {
 
+        self.city.update();
         self.traffic.update();
+
+        match self.city.local {
+            Some(ref c) => println!("Drawing with city version {}", c.id),
+            None => println!("Drawing without city"),
+        }
 
         match self.traffic.local {
             Some(ref t) => println!("Drawing with traffic version {}", t.id),

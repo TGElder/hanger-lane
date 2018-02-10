@@ -2,17 +2,20 @@ mod version;
 mod simulation;
 pub mod ui;
 
+#[derive(Clone, Debug)]
 struct Cell {
     index: usize,
 }
 
-struct City {
+#[derive(Clone, Debug)]
+pub struct City {
+    id: usize,
     cells: Vec<Cell>,
 }
 
 impl City {
     fn new(size: usize) -> City {
-        City{ cells: (0..size).map(|i| Cell{ index: i}).collect() }
+        City{ id: 0, cells: (0..size).map(|i| Cell{ index: i}).collect() }
     }
 
     fn from(file: &str) -> City {

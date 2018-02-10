@@ -1,15 +1,17 @@
 use std::sync::{Arc, RwLock};
 
+pub type Version<T> = Arc<RwLock<Option<Arc<T>>>>;
+
 pub struct Master<T: Clone> {
     pub master: T,
-    published: Arc<RwLock<Option<Arc<T>>>>,
+    published: Version<T>,
 }
 
 impl <T: Clone> Master<T> {
 
-    pub fn new(t: T) -> Master<T> {
+    pub fn new(master: T) -> Master<T> {
         Master {
-            master: t,
+            master,
             published: Arc::new(RwLock::new(None)),
         }
     }
@@ -25,7 +27,7 @@ impl <T: Clone> Master<T> {
 
 pub struct Local<T> {
     pub local: Option<Arc<T>>,
-    published: Arc<RwLock<Option<Arc<T>>>>,
+    published: Version<T>,
 }
 
 impl <T: Clone> Local<T> {
