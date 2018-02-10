@@ -1,6 +1,11 @@
 use version::{Version, Publisher, Local};
 use super::{City, Traffic};
 
+enum SimulationMessage {
+    Start,
+    Pause,
+}
+
 pub struct Simulation {
     city: Local<City>,
     traffic: Traffic,
@@ -25,6 +30,7 @@ impl Simulation {
             Some(ref c) => {
                 println!("Simulating traffic with city version {}", c.id);
                 self.traffic.id += 1;
+                println!("{}", self.traffic.id);
                 self.traffic_publisher.publish(&self.traffic);
             },
             None => println!("Simulating without city"),
