@@ -1,7 +1,7 @@
 use std::thread;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
-use version::{Master, Local};
+use version::{Version, Publisher, Local};
 use simulation::Simulation;
 use super::{City, Traffic};
 
@@ -11,12 +11,14 @@ pub struct UI {
 impl UI {
     
     pub fn launch() {
-        let city = City::from("city");
-        let mut city = Master::new(city);
-        city.publish();
+        let city = Arc::new(RwLock::new(None));
+        let mut city_publisher = Publisher::new(&city);
+        city_publisher.publish(&City::from("a city"));
 
-        let mut sim = Simulation::new(&city, 1024*1024);
-        let mut graphics = Graphics::new(&city, &sim.traffic);
+        let traffic = Arc::new(RwLock::new(None));
+
+        let mut sim = Simulation::new(&city, 1024*1024, &traffic);
+        let mut graphics = Graphics::new(&city, &traffic);
 
         let sim_handle = thread::spawn(move || {
             loop {
@@ -43,7 +45,7 @@ struct Graphics {
 
 impl Graphics{
 
-    fn new(city: &Master<City>, traffic: &Master<Traffic>) -> Graphics {
+    fn new(city: &Version<City>, traffic: &Version<Traffic>) -> Graphics {
         Graphics {
             city: Local::new(city),
             traffic: Local::new(traffic),

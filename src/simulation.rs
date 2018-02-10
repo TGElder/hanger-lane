@@ -1,17 +1,19 @@
-use version::{Master, Local};
+use version::{Version, Publisher, Local};
 use super::{City, Traffic};
 
 pub struct Simulation {
     city: Local<City>,
-    pub traffic: Master<Traffic>,
+    traffic: Traffic,
+    pub traffic_publisher: Publisher<Traffic>,
 }
 
 impl Simulation {
 
-    pub fn new(city: &Master<City>, vehicles: usize) -> Simulation {
+    pub fn new(city: &Version<City>, vehicles: usize, traffic: &Version<Traffic>) -> Simulation {
         Simulation{
            city: Local::new(city),
-           traffic: Master::new(Traffic::new(vehicles)),
+           traffic: Traffic::new(vehicles),
+           traffic_publisher: Publisher::new(traffic),
         }
     }
 
@@ -22,8 +24,8 @@ impl Simulation {
         match self.city.local {
             Some(ref c) => {
                 println!("Simulating traffic with city version {}", c.id);
-                self.traffic.master.id += 1;
-                self.traffic.publish();
+                self.traffic.id += 1;
+                self.traffic_publisher.publish(&self.traffic);
             },
             None => println!("Simulating without city"),
         }

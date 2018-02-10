@@ -2,45 +2,43 @@ use std::sync::{Arc, RwLock};
 
 pub type Version<T> = Arc<RwLock<Option<Arc<T>>>>;
 
-pub struct Master<T: Clone> {
-    pub master: T,
-    published: Version<T>,
+pub struct Publisher<T: Clone> {
+    latest: Version<T>,
 }
 
-impl <T: Clone> Master<T> {
+impl <T: Clone> Publisher<T> {
 
-    pub fn new(master: T) -> Master<T> {
-        Master {
-            master,
-            published: Arc::new(RwLock::new(None)),
+    pub fn new(latest: &Version<T>) -> Publisher<T> {
+        Publisher {
+            latest: Arc::clone(&latest),
         }
     }
 
-    pub fn publish(&mut self) {
-        let publish = self.master.clone();
+    pub fn publish(&mut self, t: &T) {
+        let publish = t.clone();
         let publish = Arc::new(publish);
-        let mut published = self.published.write().unwrap();
-        *published = Some(Arc::clone(&publish));
+        let mut latest = self.latest.write().unwrap();
+        *latest = Some(Arc::clone(&publish));
     }
 
 }
 
 pub struct Local<T> {
     pub local: Option<Arc<T>>,
-    published: Version<T>,
+    latest: Version<T>,
 }
 
 impl <T: Clone> Local<T> {
 
-    pub fn new(master: &Master<T>) -> Local<T> {
+    pub fn new(latest: &Version<T>) -> Local<T> {
         Local {
             local: None,
-            published: Arc::clone(&master.published),
+            latest: Arc::clone(&latest),
         }
     }
 
     pub fn update(&mut self) {
-        match *self.published.read().unwrap() {
+        match *self.latest.read().unwrap() {
             Some(ref p) => {
                 if (match self.local {
                         Some(ref l) => !Arc::ptr_eq(p, l), // No point cloning the reference if it still points to the same value
