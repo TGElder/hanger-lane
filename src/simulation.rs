@@ -5,6 +5,7 @@ use super::{City, Traffic};
 pub enum SimulationMessage {
     Start,
     Pause,
+    Shutdown,
 }
 
 pub struct Simulation {
@@ -13,6 +14,7 @@ pub struct Simulation {
     traffic: Traffic,
     traffic_publisher: Publisher<Traffic>,
     running: bool,
+    shutting_down: bool,
 }
 
 impl Simulation {
@@ -27,12 +29,13 @@ impl Simulation {
             traffic: Traffic::new(vehicles),
             traffic_publisher: Publisher::new(traffic),
             running: false,
+            shutting_down: false,
         }
     }
 
     pub fn run(&mut self) {
 
-        loop {
+        while !self.shutting_down {
             match self.rx.try_recv() {
                 Ok(m) => {
                     match m {
@@ -43,6 +46,10 @@ impl Simulation {
                         SimulationMessage::Pause => {
                             println!("Pausing simulation");
                             self.running = false;
+                        },
+                        SimulationMessage::Shutdown => {
+                            println!("Shutting down simulation");
+                            self.shutting_down = true;
                         },
                     }
                 },

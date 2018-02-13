@@ -1,5 +1,6 @@
 use std::thread;
 use std::sync::{Arc, RwLock, mpsc};
+use std::sync::mpsc::Sender;
 use std::time::Duration;
 use version::Publisher;
 use simulation::{Simulation, SimulationMessage};
@@ -22,27 +23,30 @@ impl UI {
         let (sim_tx, sim_rx) = mpsc::channel();
         let mut sim = Simulation::new(sim_rx, &city, 1024*1024, &traffic);
         let mut graphics = Graphics::new(&city, &traffic, "Hanger Lane", 512, 512);
+        let mut editor = Editor::new(&city);
 
         let sim_handle = thread::spawn(move || {
             sim.run();
         });
 
-        let graphics_handle = thread::spawn(move || {
-            graphics.run();
+        let sim_tx_2 = Sender::clone(&sim_tx);
+        thread::spawn(move || {
+            thread::sleep(Duration::from_secs(1));
+            sim_tx_2.send(SimulationMessage::Start).unwrap();
+
+            thread::sleep(Duration::from_secs(1));
+            editor.run();
+
+            thread::sleep(Duration::from_secs(1));
+            sim_tx_2.send(SimulationMessage::Pause).unwrap();
         });
 
-        thread::sleep(Duration::from_secs(1));
-        sim_tx.send(SimulationMessage::Start).unwrap();
+        // Window needs to be created in main thread
+        graphics.run();
+        sim_tx.send(SimulationMessage::Shutdown).unwrap();
 
-        thread::sleep(Duration::from_secs(1));
-        let mut editor = Editor::new(&city);
-        editor.run();
-
-        thread::sleep(Duration::from_secs(1));
-        sim_tx.send(SimulationMessage::Pause).unwrap();
 
         sim_handle.join().unwrap();
-        graphics_handle.join().unwrap();
 
     }
 }
