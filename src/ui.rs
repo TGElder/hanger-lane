@@ -21,17 +21,14 @@ impl UI {
 
         let (sim_tx, sim_rx) = mpsc::channel();
         let mut sim = Simulation::new(sim_rx, &city, 1024*1024, &traffic);
-        let mut graphics = Graphics::new(&city, &traffic);
+        let mut graphics = Graphics::new(&city, &traffic, "Hanger Lane", 512, 512);
 
         let sim_handle = thread::spawn(move || {
             sim.run();
         });
 
-        
         let graphics_handle = thread::spawn(move || {
-            loop {
-                graphics.run();
-            }
+            graphics.run();
         });
 
         thread::sleep(Duration::from_secs(1));

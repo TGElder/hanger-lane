@@ -6,7 +6,7 @@ pub mod ui;
 
 #[derive(Clone, Debug)]
 struct Cell {
-    index: usize,
+    index: u32,
 }
 
 #[derive(Clone, Debug)]
@@ -16,7 +16,7 @@ pub struct City {
 }
 
 impl City {
-    fn new(size: usize) -> City {
+    fn new(size: u32) -> City {
         City{ id: 0, cells: (0..size).map(|i| Cell{ index: i}).collect() }
     }
 
@@ -27,8 +27,8 @@ impl City {
 
 #[derive(Clone, Debug)]
 struct Vehicle {
-    x: u32,
-    y: u32,
+    x: u8,
+    y: u8,
 }
 
 #[derive(Clone, Debug)]
