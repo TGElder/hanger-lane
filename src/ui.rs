@@ -45,7 +45,6 @@ impl UI {
         graphics.run();
         sim_tx.send(SimulationMessage::Shutdown).unwrap();
 
-
         sim_handle.join().unwrap();
 
     }
