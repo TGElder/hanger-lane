@@ -9,6 +9,7 @@ use self::piston::window::WindowSettings;
 use self::piston::event_loop::*;
 use self::piston::input::*;
 use self::glutin_window::GlutinWindow as Window;
+use graphics::graphics::Context;
 use self::opengl_graphics::{ GlGraphics, OpenGL };
 use std::sync::Arc;
 
@@ -38,6 +39,7 @@ impl Graphics{
     pub fn create_window(title: &str, width: u32, height: u32, opengl: OpenGL) -> Window {
         WindowSettings::new(title, [width, height])
             .opengl(opengl)
+            .fullscreen(true)
             .exit_on_esc(true)
             .build()
             .unwrap()
@@ -49,20 +51,14 @@ impl Graphics{
 
     pub fn run(&mut self) {
 
-        use graphics::graphics::clear;
-        const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
-
         let mut events = Events::new(EventSettings::new());
 
         while let Some(e) = events.next(&mut self.window) {
             if let Some(r) = e.render_args() {
-                self.graphics.draw(r.viewport(), |c, gl| {
-                    clear(WHITE, gl);
-                });
-                self.traffic.local.render(&mut self.graphics, &r);
+                self.render(&r);
             }
 
-            if let Some(u) = e.update_args() {
+            if let Some(_) = e.update_args() {
                 self.city.update();
                 self.traffic.update();
             }
@@ -80,48 +76,57 @@ impl Graphics{
 
     }
 
+    fn render(&mut self, args: &RenderArgs) {
+        use graphics::graphics::clear;
+        const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+
+        let traffic = &self.traffic;
+
+        self.graphics.draw(args.viewport(), |c, gl| {
+            clear(WHITE, gl);
+            traffic.local.render(gl, &c);
+        })
+    }
+
 }
 
 trait Render {
-    fn render(&self, graphics: &mut GlGraphics, args: &RenderArgs);
+    fn render(&self, graphics: &mut GlGraphics, context: &Context);
 }
 
 impl <T: Render> Render for Option<T> {
-    fn render(&self, graphics: &mut GlGraphics, args: &RenderArgs) {
+    fn render(&self, graphics: &mut GlGraphics, context: &Context) {
         match self {
-            &Some(ref t) => t.render(graphics, args),
+            &Some(ref t) => t.render(graphics, context),
             &None => (),
         }
     }
 }
 
 impl <T: Render> Render for Arc<T> {
-    fn render(&self, graphics: &mut GlGraphics, args: &RenderArgs) {
+    fn render(&self, graphics: &mut GlGraphics, context: &Context) {
         let t: &T = &self;
-        t.render(graphics, args)
+        t.render(graphics, context)
     }
 }
 
 impl Render for Traffic {
-    fn render(&self, graphics: &mut GlGraphics, args: &RenderArgs) {
+    fn render(&self, graphics: &mut GlGraphics, context: &Context) {
         for vehicle in self.vehicles.iter() {
-            vehicle.render(graphics, args);
+            vehicle.render(graphics, context);
         }
     }
 }
 
 impl Render for Vehicle {
 
-
-    fn render(&self, graphics: &mut GlGraphics, args: &RenderArgs) {
+    fn render(&self, graphics: &mut GlGraphics, context: &Context) {
         use graphics::graphics::rectangle;
 
-        const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+        const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 
-        graphics.draw(args.viewport(), |c, gl| {
-            let square = rectangle::square(self.x as f64, self.y as f64, 50.0);
-            rectangle(RED, square, c.transform, gl);
-        })
+        let square = rectangle::square(self.x as f64/34f64, self.y as f64/61f64, 2.0);
+        rectangle(BLACK, square, context.transform, graphics);
     }
 }
 

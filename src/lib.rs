@@ -1,3 +1,5 @@
+extern crate rand;
+
 mod version;
 mod simulation;
 mod graphics;
@@ -27,8 +29,10 @@ impl City {
 
 #[derive(Clone, Debug)]
 struct Vehicle {
-    x: u8,
-    y: u8,
+    x: u16,
+    y: u16,
+    vx: i8,
+    vy: i8,
 }
 
 #[derive(Clone, Debug)]
@@ -39,6 +43,13 @@ pub struct Traffic {
 
 impl Traffic {
     fn new(size: usize) -> Traffic {
-        Traffic{ id: 0, vehicles: (0..size).map(|_| Vehicle{ x: 0, y: 0 }).collect() }
+        Traffic{
+            id: 0,
+            vehicles: (0..size).map(|_| Vehicle{
+                x: rand::random::<u16>(),
+                y: rand::random::<u16>(),
+                vx: rand::random::<i8>()/32,
+                vy: rand::random::<i8>()/32,
+            }).collect() }
     }
 }

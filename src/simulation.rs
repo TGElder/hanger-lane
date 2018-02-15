@@ -1,3 +1,5 @@
+extern crate rand;
+
 use std::sync::mpsc::Receiver;
 use version::{Version, Publisher, Local};
 use super::{City, Traffic};
@@ -58,6 +60,8 @@ impl Simulation {
 
             if self.running {
 
+                self.evolve();
+
                 self.city.update();
 
                 match self.city.local {
@@ -71,6 +75,13 @@ impl Simulation {
                 }
 
             }
+        }
+    }
+
+    fn evolve(&mut self) {
+        for vehicle in self.traffic.vehicles.iter_mut() {
+            vehicle.x = (vehicle.x as i32 + vehicle.vx as i32) as u16;
+            vehicle.y = (vehicle.y as i32 + vehicle.vy as i32) as u16;
         }
     }
 
