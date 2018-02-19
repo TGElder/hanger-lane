@@ -6,15 +6,16 @@ use std::cmp::max;
 use std::collections::HashSet;
 use std::hash::Hash;
 
-pub struct Edge<T: Num> {
+#[derive(PartialEq, Debug, Clone)]
+pub struct Edge {
     from: u32,
     to: u32,
-    cost: T,
+    cost: u8,
 }
 
-impl <T: Num> Edge<T> {
+impl Edge {
 
-    pub fn new(from: u32, to: u32, cost: T) -> Edge<T> {
+    pub fn new(from: u32, to: u32, cost: u8) -> Edge {
         Edge {
             from,
             to,
@@ -22,40 +23,37 @@ impl <T: Num> Edge<T> {
     }
 }
 
-pub struct Network<T: Num> {
+pub struct Network {
     pub nodes: u32,
-    pub edges: Vec<Edge<T>>,
-    below: Vec<Vec<u32>>,
-    //above: Vec<Vec<T>>,
-    //edges_in: Vec<Edge<T, U>>,
-    //edges_out: Vec<Edge<T, U>>,
+    pub edges: Vec<Edge>,
+    edges_in: Vec<Vec<Edge>>,
+    //edges_out: Vec<Vec<Edge<T>>>,
 }
 
-impl <T: Num> Network<T> {
+impl Network {
 
-    pub fn new(edges: Vec<Edge<T>>) -> Network<T> {
+    pub fn new(edges: Vec<Edge>) -> Network {
 
         let nodes = edges.iter().map(|e| max(e.from, e.to)).max().unwrap() + 1;
-        let below = Network::calculate_belows(nodes, &edges) ;
+        let edges_in = Network::calculate_all_edges_in(nodes, &edges) ;
 
         Network {
            nodes,
            edges,
-           below,
+           edges_in,
         }
     }
 
-
-    fn calculate_belows(nodes: u32, edges: &Vec<Edge<T>>) -> Vec<Vec<u32>> {
-        (0..nodes).map(|n| Network::calculate_below(n, edges)).collect()
+    fn calculate_all_edges_in(nodes: u32, edges: &Vec<Edge>) -> Vec<Vec<Edge>> {
+        (0..nodes).map(|n| Network::calculate_edges_in(n, edges)).collect()
     }
 
-    fn calculate_below(node: u32, edges: &Vec<Edge<T>>) -> Vec<u32> {
-        edges.iter().filter(|e| e.from == node).map(|e| e.to).collect()
+    fn calculate_edges_in(node: u32, edges: &Vec<Edge>) -> Vec<Edge> {
+        edges.iter().filter(|e| e.to == node).cloned().collect()
     }
 
-    pub fn get_below(&self, node: u32) -> &Vec<u32> {
-        &self.below[node as usize]
+    pub fn get_edges_in(&self, node: u32) -> &Vec<Edge> {
+        &self.edges_in[node as usize]
     }
 
     //pub fn get_above(&self, node: T) -> Vec<T> {
@@ -86,7 +84,7 @@ mod tests {
     use hamcrest::prelude::*;
     use {Edge, Network};
 
-    fn get_test_network() -> Network<u8> {
+    fn get_test_network() -> Network {
         
         let edge_01 = Edge::new(0, 1, 1);
         let edge_02a = Edge::new(0, 2, 1);
@@ -122,14 +120,10 @@ mod tests {
     #[test]
     fn test_get_below() {
         let network = get_test_network();
-        assert_that!(&network.get_below(0), contains(vec![1, 2]).exactly());
-        assert_that!(&network.get_below(1), contains(vec![3]).exactly());
-        assert_that!(&network.get_below(2), contains(vec![3]).exactly());
-        assert_that!(network.get_below(3).len(), is(equal_to(0)));
-        assert_that!(network.get_below(4).len(), is(equal_to(0)));
-        assert_that!(&network.get_below(5), contains(vec![6]).exactly());
-        assert_that!(&network.get_below(6), contains(vec![5]).exactly());
-        assert_that!(&network.get_below(7), contains(vec![7]).exactly());
+        assert_that!(network.get_edges_in(0).len(), is(equal_to(0)));
+        assert_that!(&network.get_edges_in(1), contains(vec![Edge::new(0, 1, 1)]).exactly());
+        assert_that!(&network.get_edges_in(2), contains(vec![Edge::new(0, 2, 1),
+        Edge::new(0, 2, 1)]).exactly());
     }
 }
 
