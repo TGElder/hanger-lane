@@ -1,12 +1,9 @@
 extern crate num;
 #[cfg(test)] #[macro_use] extern crate hamcrest;
 
-use num::Num;
 use std::cmp::max;
-use std::collections::HashSet;
-use std::hash::Hash;
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug)]
 pub struct Edge {
     from: u32,
     to: u32,
@@ -25,56 +22,50 @@ impl Edge {
 
 pub struct Network<'a> {
     pub nodes: u32,
-    pub edges: &Vec<Edge>,
-    edges_in: Vec<Vec<&Edge>>,
-    //edges_out: Vec<Vec<Edge<T>>>,
+    pub edges: &'a Vec<Edge>,
+    edges_out: Vec<Vec<&'a Edge>>,
+    edges_in: Vec<Vec<&'a Edge>>,
 }
 
-impl Network {
+impl <'a> Network<'a> {
 
-    pub fn new(edges: Vec<Edge>) -> Network {
+    pub fn new(edges: &'a Vec<Edge>) -> Network<'a> {
 
         let nodes = edges.iter().map(|e| max(e.from, e.to)).max().unwrap() + 1;
+        let edges_out = Network::calculate_all_edges_out(nodes, &edges) ;
         let edges_in = Network::calculate_all_edges_in(nodes, &edges) ;
 
         Network {
            nodes,
            edges,
+           edges_out,
            edges_in,
         }
     }
 
-    fn calculate_all_edges_in(nodes: u32, edges: &Vec<Edge>) -> Vec<Vec<Edge>> {
+    fn calculate_all_edges_in(nodes: u32, edges: &'a Vec<Edge>) -> Vec<Vec<&'a Edge>> {
         (0..nodes).map(|n| Network::calculate_edges_in(n, edges)).collect()
     }
 
-    fn calculate_edges_in(node: u32, edges: &Vec<Edge>) -> Vec<Edge> {
-        edges.iter().filter(|e| e.to == node).cloned().collect()
+    fn calculate_edges_in(node: u32, edges: &'a Vec<Edge>) -> Vec<&'a Edge> {
+        edges.iter().filter(|e| e.to == node).collect()
     }
 
-    pub fn get_edges_in(&self, node: u32) -> &Vec<Edge> {
+    pub fn get_in(&self, node: u32) -> &Vec<&'a Edge> {
         &self.edges_in[node as usize]
     }
 
-    //pub fn get_above(&self, node: T) -> Vec<T> {
-    //    vec![]
-    //}
+    fn calculate_all_edges_out(nodes: u32, edges: &'a Vec<Edge>) -> Vec<Vec<&'a Edge>> {
+        (0..nodes).map(|n| Network::calculate_edges_out(n, edges)).collect()
+    }
 
-    //pub fn get_in(&self, node: T) -> Vec<Edge<T, U>> {
-    //    vec![]
-    //}
+    fn calculate_edges_out(node: u32, edges: &'a Vec<Edge>) -> Vec<&'a Edge> {
+        edges.iter().filter(|e| e.from == node).collect()
+    }
 
-    //pub fn get_out(&self, node: T) -> Vec<Edge<T, U>> {
-    //    vec![]
-    //}
-
-    //pub fn get_edges(&self, node: T) -> Vec<Edge<T, U>> {
-    //    vec![]
-    //}
-
-    //pub fn get_reverses(&self, node: T) -> Vec<Edge<T, U>> {
-    //    vec![]
-    //}
+    pub fn get_out(&self, node: u32) -> &Vec<&'a Edge> {
+        &self.edges_out[node as usize]
+    }
 }
 
 
@@ -84,46 +75,54 @@ mod tests {
     use hamcrest::prelude::*;
     use {Edge, Network};
 
-    fn get_test_network() -> Network {
-        
-        let edge_01 = Edge::new(0, 1, 1);
-        let edge_02a = Edge::new(0, 2, 1);
-        let edge_02b = Edge::new(0, 2, 1);
-        let edge_13 = Edge::new(1, 3, 1);
-        let edge_23a = Edge::new(2, 3, 1);
-        let edge_23b = Edge::new(2, 3, 1);
-        let edge_56 = Edge::new(5, 6, 1);
-        let edge_65a = Edge::new(6, 5, 1);
-        let edge_65b = Edge::new(6, 5, 1);
-        let edge_77 = Edge::new(7, 7, 1);
+    fn get_test_edges() -> Vec<Edge> {
+        vec![Edge::new(0, 1, 1),
+            Edge::new(0, 2, 1),
+            Edge::new(0, 2, 1),
+            Edge::new(1, 3, 1),
+            Edge::new(2, 3, 1),
+            Edge::new(2, 3, 1),
+            Edge::new(5, 6, 1),
+            Edge::new(6, 5, 1),
+            Edge::new(6, 5, 1),
+            Edge::new(7, 7, 1)]
+    }
 
-        Network::new(vec![
-            edge_01,
-            edge_02a,
-            edge_02b,
-            edge_13,
-            edge_23a,
-            edge_23b,
-            edge_56,
-            edge_65a,
-            edge_65b,
-            edge_77,
-        ])
-
+    fn get_test_network(edges: &Vec<Edge>) -> Network {
+        Network::new(edges)
     }
 
     #[test]
     fn test_nodes_count() {
-        assert_eq!(get_test_network().nodes, 8);
+        assert_eq!(get_test_network(&get_test_edges()).nodes, 8);
     }
 
     #[test]
-    fn test_get_below() {
-        let network = get_test_network();
-        assert_that!(network.get_edges_in(0).len(), is(equal_to(0)));
-        assert_that!(&network.get_edges_in(1), contains(vec![Edge::new(0, 1, 1)]).exactly());
-        assert_that!(&network.get_edges_in(2), contains(vec![Edge::new(0, 2, 1),
-        Edge::new(0, 2, 1)]).exactly());
+    fn test_get_out() {
+        let edges = get_test_edges();
+        let network = get_test_network(&edges);
+        assert_that!(network.get_out(0), contains(vec![&edges[0], &edges[1], &edges[2]]).exactly());
+        assert_that!(network.get_out(1), contains(vec![&edges[3]]).exactly());
+        assert_that!(network.get_out(2), contains(vec![&edges[4], &edges[5]]).exactly());
+        assert_that!(network.get_out(3).len(), is(equal_to(0)));
+        assert_that!(network.get_out(4).len(), is(equal_to(0)));
+        assert_that!(network.get_out(5), contains(vec![&edges[6]]).exactly());
+        assert_that!(network.get_out(6), contains(vec![&edges[7], &edges[8]]).exactly());
+        assert_that!(network.get_out(7), contains(vec![&edges[9]]).exactly());
+    }
+
+    #[test]
+    fn test_get_in() {
+        let edges = get_test_edges();
+        let network = get_test_network(&edges);
+        assert_that!(network.get_in(0).len(), is(equal_to(0)));
+        assert_that!(network.get_in(1), contains(vec![&edges[0]]).exactly());
+        assert_that!(network.get_in(2), contains(vec![&edges[1], &edges[2]]).exactly());
+        assert_that!(network.get_in(3), contains(vec![&edges[3], &edges[4], &edges[5]]).exactly());
+        assert_that!(network.get_in(4).len(), is(equal_to(0)));
+        assert_that!(network.get_in(5), contains(vec![&edges[7], &edges[8]]).exactly());
+        assert_that!(network.get_in(6), contains(vec![&edges[6]]).exactly());
+        assert_that!(network.get_in(7), contains(vec![&edges[9]]).exactly());
     }
 }
 
