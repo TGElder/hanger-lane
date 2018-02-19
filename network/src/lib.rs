@@ -23,10 +23,10 @@ impl Edge {
     }
 }
 
-pub struct Network {
+pub struct Network<'a> {
     pub nodes: u32,
-    pub edges: Vec<Edge>,
-    edges_in: Vec<Vec<Edge>>,
+    pub edges: &Vec<Edge>,
+    edges_in: Vec<Vec<&Edge>>,
     //edges_out: Vec<Vec<Edge<T>>>,
 }
 
