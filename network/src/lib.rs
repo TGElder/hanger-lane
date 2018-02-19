@@ -6,15 +6,15 @@ use std::cmp::max;
 use std::collections::HashSet;
 use std::hash::Hash;
 
-pub struct Edge<T: Into<u32>, U: Num> {
-    from: T,
-    to: T,
-    cost: U,
+pub struct Edge<T: Num> {
+    from: u32,
+    to: u32,
+    cost: T,
 }
 
-impl <T: Into<u32>, U: Num> Edge<T, U> {
+impl <T: Num> Edge<T> {
 
-    pub fn new(from: T, to: T, cost: U) -> Edge<T, U> {
+    pub fn new(from: u32, to: u32, cost: T) -> Edge<T> {
         Edge {
             from,
             to,
@@ -22,20 +22,20 @@ impl <T: Into<u32>, U: Num> Edge<T, U> {
     }
 }
 
-pub struct Network<T: Into<u32>, U: Num> {
-    pub nodes: T,
-    pub edges: Vec<Edge<T, U>>,
-    below: Vec<HashSet<T>>,
+pub struct Network<T: Num> {
+    pub nodes: u32,
+    pub edges: Vec<Edge<T>>,
+    below: Vec<Vec<u32>>,
     //above: Vec<Vec<T>>,
     //edges_in: Vec<Edge<T, U>>,
     //edges_out: Vec<Edge<T, U>>,
 }
 
-impl <T: Into<u32> + Ord + Num + Copy + Hash, U: Num> Network<T, U> {
+impl <T: Num> Network<T> {
 
-    pub fn new(edges: Vec<Edge<T, U>>) -> Network<T, U> {
+    pub fn new(edges: Vec<Edge<T>>) -> Network<T> {
 
-        let nodes = edges.iter().map(|e| max(e.from, e.to)).max().unwrap() + T::one();
+        let nodes = edges.iter().map(|e| max(e.from, e.to)).max().unwrap() + 1;
         let below = Network::calculate_belows(nodes, &edges) ;
 
         Network {
@@ -46,16 +46,16 @@ impl <T: Into<u32> + Ord + Num + Copy + Hash, U: Num> Network<T, U> {
     }
 
 
-    fn calculate_belows(nodes: T, edges: &Vec<Edge<T, U>>) -> Vec<HashSet<T>> {
-        (0..T::into(nodes)).map(|n| Network::calculate_below(n, edges)).collect()
+    fn calculate_belows(nodes: u32, edges: &Vec<Edge<T>>) -> Vec<Vec<u32>> {
+        (0..nodes).map(|n| Network::calculate_below(n, edges)).collect()
     }
 
-    fn calculate_below(node: u32, edges: &Vec<Edge<T, U>>) -> HashSet<T> {
-        edges.iter().filter(|e| T::into(e.from) == node).map(|e| e.to).collect()
+    fn calculate_below(node: u32, edges: &Vec<Edge<T>>) -> Vec<u32> {
+        edges.iter().filter(|e| e.from == node).map(|e| e.to).collect()
     }
 
-    pub fn get_below(&self, node: T) -> &HashSet<T> {
-        &self.below[T::into(node) as usize]
+    pub fn get_below(&self, node: u32) -> &Vec<u32> {
+        &self.below[node as usize]
     }
 
     //pub fn get_above(&self, node: T) -> Vec<T> {
@@ -86,7 +86,7 @@ mod tests {
     use hamcrest::prelude::*;
     use {Edge, Network};
 
-    fn get_test_network() -> Network<u16, u16> {
+    fn get_test_network() -> Network<u8> {
         
         let edge_01 = Edge::new(0, 1, 1);
         let edge_02a = Edge::new(0, 2, 1);
@@ -122,14 +122,14 @@ mod tests {
     #[test]
     fn test_get_below() {
         let network = get_test_network();
-        assert_that!(&network.get_below(0).iter().cloned().collect(), contains(vec![1, 2]).exactly());
-        assert_that!(&network.get_below(1).iter().cloned().collect(), contains(vec![3]).exactly());
-        assert_that!(&network.get_below(2).iter().cloned().collect(), contains(vec![3]).exactly());
+        assert_that!(&network.get_below(0), contains(vec![1, 2]).exactly());
+        assert_that!(&network.get_below(1), contains(vec![3]).exactly());
+        assert_that!(&network.get_below(2), contains(vec![3]).exactly());
         assert_that!(network.get_below(3).len(), is(equal_to(0)));
         assert_that!(network.get_below(4).len(), is(equal_to(0)));
-        assert_that!(&network.get_below(5).iter().cloned().collect(), contains(vec![6]).exactly());
-        assert_that!(&network.get_below(6).iter().cloned().collect(), contains(vec![5]).exactly());
-        assert_that!(&network.get_below(7).iter().cloned().collect(), contains(vec![7]).exactly());
+        assert_that!(&network.get_below(5), contains(vec![6]).exactly());
+        assert_that!(&network.get_below(6), contains(vec![5]).exactly());
+        assert_that!(&network.get_below(7), contains(vec![7]).exactly());
     }
 }
 
