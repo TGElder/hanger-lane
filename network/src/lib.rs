@@ -19,17 +19,39 @@ impl Edge {
             cost }
     }
 
-    pub fn create_4_neighbour_deltas() -> Vec<(i8, i8)> {
-        vec![(1, 0), (0, 1), (-1, 0), (0, -1)]
+    pub fn create_4_neighbour_deltas() -> Vec<(u8, u8)> {
+        vec![(1, 0), (0, 1)]
     }
     
-    pub fn create_8_neighbour_deltas() -> Vec<(i8, i8)> {
-        vec![(1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1)]
+    pub fn create_8_neighbour_deltas() -> Vec<(u8, u8)> {
+        vec![(1, 0), (1, 1), (0, 1)]
     }
 
-    pub fn create_grid(width: u32, height: u32, cost: u8, neighbour_deltas: Vec<(i8, i8)>) -> Vec<Edge> {
-        vec![]
+    pub fn create_grid(width: u32, height: u32, cost: u8, neighbour_deltas: Vec<(u8, u8)>) -> Vec<Edge> {
+
+        fn get_index(x: u32, y: u32, width: u32) -> u32 {
+            (y * width) + x
+        }
+
+        fn create_edge(x: u32, y: u32, width: u32, height: u32, delta: &(u8, u8), cost: u8) -> Vec<Edge> {
+            let x_b = x + delta.0 as u32;
+            let y_b = y + delta.1 as u32;
+            if (x_b >= width) || (y_b >= height) {
+                return vec![]
+            }
+            let index_a = get_index(x, y, width);
+            let index_b = get_index(x_b, y_b, width);
+            vec![Edge::new(index_a, index_b, cost), Edge::new(index_b, index_a, cost)]
+        }
+
+        neighbour_deltas.iter().flat_map(move |d| {
+            (0..width).flat_map(move |x| {
+                (0..height).flat_map(move |y| create_edge(x, y, width, height, d, cost))
+            })
+        }).collect()
     }
+
+
 }
 
 pub struct Network<'a> {
@@ -128,6 +150,39 @@ mod tests {
         assert_that!(network.get_in(5), contains(vec![&edges[7], &edges[8]]).exactly());
         assert_that!(network.get_in(6), contains(vec![&edges[6]]).exactly());
         assert_that!(network.get_in(7), contains(vec![&edges[9]]).exactly());
+    }
+
+    #[test]
+    fn test_create_grid() {
+        
+        let expected_edges = vec![Edge::new(0, 1, 1),
+                                  Edge::new(0, 3, 1),
+                                  Edge::new(1, 0, 1),
+                                  Edge::new(1, 2, 1),
+                                  Edge::new(1, 4, 1),
+                                  Edge::new(2, 1, 1),
+                                  Edge::new(2, 5, 1),
+                                  Edge::new(3, 0, 1),
+                                  Edge::new(3, 4, 1),
+                                  Edge::new(3, 6, 1),
+                                  Edge::new(4, 1, 1),
+                                  Edge::new(4, 3, 1),
+                                  Edge::new(4, 5, 1),
+                                  Edge::new(4, 7, 1),
+                                  Edge::new(5, 2, 1),
+                                  Edge::new(5, 4, 1),
+                                  Edge::new(5, 8, 1),
+                                  Edge::new(6, 3, 1),
+                                  Edge::new(6, 7, 1),
+                                  Edge::new(7, 4, 1),
+                                  Edge::new(7, 6, 1),
+                                  Edge::new(7, 8, 1),
+                                  Edge::new(8, 5, 1),
+                                  Edge::new(8, 7, 1),
+        ];
+
+        let edges = Edge::create_grid(3, 3, 1, Edge::create_4_neighbour_deltas());
+        assert_that!(&edges.iter().collect(), contains(expected_edges.iter().collect()).exactly());
     }
 }
 
