@@ -18,6 +18,18 @@ impl Edge {
             to,
             cost }
     }
+
+    pub fn create_4_neighbour_deltas() -> Vec<(i8, i8)> {
+        vec![(1, 0), (0, 1), (-1, 0), (0, -1)]
+    }
+    
+    pub fn create_8_neighbour_deltas() -> Vec<(i8, i8)> {
+        vec![(1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1)]
+    }
+
+    pub fn create_grid(width: u32, height: u32, cost: u8, neighbour_deltas: Vec<(i8, i8)>) -> Vec<Edge> {
+        vec![]
+    }
 }
 
 pub struct Network<'a> {
@@ -29,9 +41,8 @@ pub struct Network<'a> {
 
 impl <'a> Network<'a> {
 
-    pub fn new(edges: &'a Vec<Edge>) -> Network<'a> {
+    pub fn new(nodes: u32, edges: &'a Vec<Edge>) -> Network<'a> {
 
-        let nodes = edges.iter().map(|e| max(e.from, e.to)).max().unwrap() + 1;
         let edges_out = Network::calculate_all_edges_out(nodes, &edges) ;
         let edges_in = Network::calculate_all_edges_in(nodes, &edges) ;
 
@@ -68,7 +79,6 @@ impl <'a> Network<'a> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
 
@@ -88,19 +98,14 @@ mod tests {
             Edge::new(7, 7, 1)]
     }
 
-    fn get_test_network(edges: &Vec<Edge>) -> Network {
-        Network::new(edges)
-    }
-
-    #[test]
-    fn test_nodes_count() {
-        assert_eq!(get_test_network(&get_test_edges()).nodes, 8);
+    fn get_test_network(nodes: u32, edges: &Vec<Edge>) -> Network {
+        Network::new(nodes, edges)
     }
 
     #[test]
     fn test_get_out() {
         let edges = get_test_edges();
-        let network = get_test_network(&edges);
+        let network = get_test_network(8, &edges);
         assert_that!(network.get_out(0), contains(vec![&edges[0], &edges[1], &edges[2]]).exactly());
         assert_that!(network.get_out(1), contains(vec![&edges[3]]).exactly());
         assert_that!(network.get_out(2), contains(vec![&edges[4], &edges[5]]).exactly());
@@ -114,7 +119,7 @@ mod tests {
     #[test]
     fn test_get_in() {
         let edges = get_test_edges();
-        let network = get_test_network(&edges);
+        let network = get_test_network(8, &edges);
         assert_that!(network.get_in(0).len(), is(equal_to(0)));
         assert_that!(network.get_in(1), contains(vec![&edges[0]]).exactly());
         assert_that!(network.get_in(2), contains(vec![&edges[1], &edges[2]]).exactly());
