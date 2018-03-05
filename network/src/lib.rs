@@ -99,7 +99,49 @@ impl <'a> Network<'a> {
     pub fn get_out(&self, node: u32) -> &Vec<&'a Edge> {
         &self.edges_out[node as usize]
     }
+
+    fn dijkstra(&self, node: u32) -> Vec<Option<u32>> {
+        use std::collections::BinaryHeap;
+        use std::cmp::Ordering;
+
+        #[derive(Eq)]
+        struct Node {
+            index: u32,
+            cost: u32,
+        }
+
+        impl Ord for Node {
+            fn cmp(&self, other: &Node) -> Ordering {
+                self.cost.cmp(&other.cost)
+            }
+        }
+
+        impl PartialOrd for Node {
+            fn partial_cmp(&self, other: &Node) -> Option<Ordering> {
+                Some(self.cmp(other))
+            }
+        }
+
+        impl PartialEq for Node {
+            fn eq(&self, other: &Node) -> bool {
+                self.cost == other.cost
+            }
+        }
+
+        let mut open: Vec<bool> = vec![false; self.nodes as usize];
+        let mut closed: Vec<bool> = vec![false; self.nodes as usize];
+        let mut heap = BinaryHeap::new();
+
+        open[node as usize] = true;
+        heap.push(Node{ index: node, cost: 0 });
+
+        while let Some(Node {index, cost}) = heap.pop() {
+        }
+
+        vec![]
+    }
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -109,15 +151,15 @@ mod tests {
 
     fn get_test_edges() -> Vec<Edge> {
         vec![Edge::new(0, 1, 1),
-            Edge::new(0, 2, 1),
-            Edge::new(0, 2, 1),
-            Edge::new(1, 3, 1),
-            Edge::new(2, 3, 1),
-            Edge::new(2, 3, 1),
-            Edge::new(5, 6, 1),
-            Edge::new(6, 5, 1),
-            Edge::new(6, 5, 1),
-            Edge::new(7, 7, 1)]
+            Edge::new(0, 2, 2),
+            Edge::new(0, 2, 3),
+            Edge::new(1, 3, 4),
+            Edge::new(2, 3, 5),
+            Edge::new(2, 3, 6),
+            Edge::new(5, 6, 7),
+            Edge::new(6, 5, 8),
+            Edge::new(6, 5, 9),
+            Edge::new(7, 7, 10)]
     }
 
     fn get_test_network(nodes: u32, edges: &Vec<Edge>) -> Network {
@@ -183,6 +225,21 @@ mod tests {
 
         let edges = Edge::create_grid(3, 3, 1, Edge::create_4_neighbour_deltas());
         assert_that!(&edges.iter().collect(), contains(expected_edges.iter().collect()).exactly());
+    }
+
+    #[test]
+    fn test_dijkstra() {
+        let edges = get_test_edges();
+        let network = get_test_network(8, &edges);
+
+        assert_that!(&network.dijkstra(0), contains(vec![Some(0), None, None, None, None, None, None, None]).exactly().in_order());
+        assert_that!(&network.dijkstra(1), contains(vec![Some(1), Some(0), None, None, None, None, None, None]).exactly().in_order());
+        assert_that!(&network.dijkstra(2), contains(vec![Some(3), None, Some(0), None, None, None, None]).exactly().in_order());
+        assert_that!(&network.dijkstra(3), contains(vec![Some(3), Some(2), Some(5), Some(0), None, None, None]).exactly().in_order());
+        assert_that!(&network.dijkstra(4), contains(vec![None, None, None, None, Some(0), None, None, None]).exactly().in_order());
+        assert_that!(&network.dijkstra(5), contains(vec![None, None, None, None, None, Some(0), Some(8), None]).exactly().in_order());
+        assert_that!(&network.dijkstra(6), contains(vec![None, None, None, None, None, Some(7), Some(0), None]).exactly().in_order());
+        assert_that!(&network.dijkstra(7), contains(vec![None, None, None, None, None, None, None, Some(0)]).exactly().in_order());
     }
 }
 
