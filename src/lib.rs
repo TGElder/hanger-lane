@@ -6,7 +6,7 @@ mod graphics;
 mod editor;
 pub mod ui;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Direction {
     North,
     South,
@@ -22,6 +22,15 @@ struct Cell {
     d: Direction,
 }
 
+
+impl Cell {
+
+    pub fn new(x: u32, y: u32, d: Direction) -> Cell {
+        Cell{x, y, d}
+    }
+
+}
+
 #[derive(Clone, Debug)]
 pub struct City {
     id: usize,
@@ -35,34 +44,25 @@ impl City {
 
         let directions = [Direction::North, Direction::East, Direction::South, Direction::West];
 
-        let mut cells = Vec::with_capacity((width * height * 4) as usize);
-
-        for d in directions.iter() {
-            for y in 0..height {
-                for x in 0..width {
-                    cells.push( Cell { x, y, d: d.clone() } );
-                }
-            }
-        }
-
-        City{ id: 0, width, height, cells }
+        City{ id: 0, width, height, cells: vec![] }
     }
 
-    fn forward(&self, &Cell{ref x, ref y, ref d}: &Cell) -> Option<&Cell> {
-        match d {
-            &Direction::North if *y > 0 => Some(self.get_index(x, &(y - 1), d)),
-            &Direction::South if *y < self.height - 1 => Some(self.get_index(x, &(y + 1), d)),
-            &Direction::West if *x > 0 => Some(self.get_index(&(x - 1), y, d)),
-            &Direction::East if *x < self.width - 1 => Some(self.get_index(&(x + 1), y, d)),
+    fn forward(&self, &Cell{ref x, ref y, ref d}: &Cell) -> Option<Cell> {
+
+        match *d {
+            Direction::North if *y > 0 => Some(Cell::new(*x, *y - 1, *d)),
+            Direction::South if *y < self.height - 1 => Some(Cell::new(*x, *y + 1, *d)),
+            Direction::West if *x > 0 => Some(Cell::new(*x - 1, *y, *d)),
+            Direction::East if *x < self.width - 1 => Some(Cell::new(*x + 1, *y, *d)),
             _ => None,
-        }.map(|s| self.cells.get(s).unwrap())
+        }
     }
 
     fn from(_: &str) -> City {
         City::new(1024, 1024)
     }
 
-    fn get_index(&self, x: &u32, y: &u32, d: &Direction) -> usize {
+    fn get_index(&self, &Cell{ref x, ref y, ref d}: &Cell) -> usize {
 
         fn get_direction_index(d: &Direction) -> u32 {
             match d {
@@ -117,24 +117,34 @@ mod tests {
     fn test_forward() {
         let city = City::new(3, 3);
 
-        assert!(city.forward(&city.cells.get(city.get_index(&0, &1, &Direction::North)).unwrap())
-                == Some(&city.cells.get(city.get_index(&0, &0, &Direction::North)).unwrap()));
-        //assert!(city.forward(&Cell{x: 0, y: 1, d: Direction::North}) == Some(Cell{x: 0, y: 0, d: Direction::North}));
-    //    assert!(city.forward(&Cell{x: 0, y: 0, d: Direction::North}) == None);
-    //    assert!(city.forward(&Cell{x: 0, y: 1, d: Direction::South}) == Some(Cell{x: 0, y: 2, d: Direction::South}));
-    //    assert!(city.forward(&Cell{x: 0, y: 2, d: Direction::South}) == None);
-    //    assert!(city.forward(&Cell{x: 1, y: 0, d: Direction::West}) == Some(Cell{x: 0, y: 0, d: Direction::West}));
-    //    assert!(city.forward(&Cell{x: 0, y: 0, d: Direction::West}) == None);
-    //    assert!(city.forward(&Cell{x: 1, y: 0, d: Direction::East}) == Some(Cell{x: 2, y: 0, d: Direction::East}));
-    //    assert!(city.forward(&Cell{x: 2, y: 0, d: Direction::East}) == None);
+        assert!(city.forward(&Cell{x: 0, y: 1, d: Direction::North}) == Some(Cell{x: 0, y: 0, d: Direction::North}));
+        assert!(city.forward(&Cell{x: 0, y: 0, d: Direction::North}) == None);
+        assert!(city.forward(&Cell{x: 0, y: 1, d: Direction::South}) == Some(Cell{x: 0, y: 2, d: Direction::South}));
+        assert!(city.forward(&Cell{x: 0, y: 2, d: Direction::South}) == None);
+        assert!(city.forward(&Cell{x: 1, y: 0, d: Direction::West}) == Some(Cell{x: 0, y: 0, d: Direction::West}));
+        assert!(city.forward(&Cell{x: 0, y: 0, d: Direction::West}) == None);
+        assert!(city.forward(&Cell{x: 1, y: 0, d: Direction::East}) == Some(Cell{x: 2, y: 0, d: Direction::East}));
+        assert!(city.forward(&Cell{x: 2, y: 0, d: Direction::East}) == None);
     }
 
     #[test]
     fn test_get_index() {
         let city = City::new(5, 3);
 
-        for (index, cell) in city.cells.iter().enumerate() {
-            assert!(city.get_index(&cell.x, &cell.y, &cell.d) == index);
+		let directions = [Direction::North, Direction::East, Direction::South, Direction::West];
+
+        let mut cells = Vec::with_capacity((city.width * city.height * 4) as usize);
+
+        for d in directions.iter() {
+            for y in 0..city.height {
+                for x in 0..city.width {
+                    cells.push( Cell { x, y, d: d.clone() } );
+                }
+            }
+        }
+
+        for (index, cell) in cells.iter().enumerate() {
+            assert!(city.get_index(&cell) == index);
         }
     }
 }
