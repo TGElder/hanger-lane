@@ -63,35 +63,33 @@ impl <'a> Network<'a> {
 
     pub fn new(nodes: u32, edges: &'a Vec<Edge>) -> Network<'a> {
 
-        let edges_out = Network::calculate_all_edges_out(nodes, &edges) ;
-        let edges_in = Network::calculate_all_edges_in(nodes, &edges) ;
-
-        Network {
+        let mut out = Network {
            nodes,
            edges,
-           edges_out,
-           edges_in,
+           edges_out: Vec::with_capacity(nodes as usize),
+           edges_in: Vec::with_capacity(nodes as usize),
+        };
+
+        out.calculate_all_edges_in_and_out();
+
+        out
+    }
+
+    fn calculate_all_edges_in_and_out(&mut self) {
+        self.edges_out = Vec::with_capacity(self.nodes as usize);
+        self.edges_in = Vec::with_capacity(self.nodes as usize);
+        for _ in 0..self.nodes {
+            self.edges_out.push(vec![]);
+            self.edges_in.push(vec![]);
         }
-    }
-
-    fn calculate_all_edges_in(nodes: u32, edges: &'a Vec<Edge>) -> Vec<Vec<&'a Edge>> {
-        (0..nodes).map(|n| Network::calculate_edges_in(n, edges)).collect()
-    }
-
-    fn calculate_edges_in(node: u32, edges: &'a Vec<Edge>) -> Vec<&'a Edge> {
-        edges.iter().filter(|e| e.to == node).collect()
+        for edge in self.edges {
+            self.edges_out.get_mut(edge.from as usize).unwrap().push(edge);
+            self.edges_in.get_mut(edge.to as usize).unwrap().push(edge);
+        }
     }
 
     pub fn get_in(&self, node: u32) -> &Vec<&'a Edge> {
         &self.edges_in[node as usize]
-    }
-
-    fn calculate_all_edges_out(nodes: u32, edges: &'a Vec<Edge>) -> Vec<Vec<&'a Edge>> {
-        (0..nodes).map(|n| Network::calculate_edges_out(n, edges)).collect()
-    }
-
-    fn calculate_edges_out(node: u32, edges: &'a Vec<Edge>) -> Vec<&'a Edge> {
-        edges.iter().filter(|e| e.from == node).collect()
     }
 
     pub fn get_out(&self, node: u32) -> &Vec<&'a Edge> {

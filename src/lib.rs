@@ -8,6 +8,8 @@ mod graphics;
 mod editor;
 pub mod ui;
 
+use rand::Rng;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Direction {
     North,
@@ -142,11 +144,13 @@ pub struct Traffic {
 
 impl Traffic {
     fn new(size: usize) -> Traffic {
+        let mut rng = rand::thread_rng();
+
         Traffic{
             id: 0,
             vehicles: (0..size).map(|_| Cell{
-                x: rand::random::<u16>() as u32,
-                y: rand::random::<u16>() as u32,
+                x: rng.gen_range(0, 64),
+                y: rng.gen_range(0, 64),
                 d: Direction::North,
             }).collect() }
     }

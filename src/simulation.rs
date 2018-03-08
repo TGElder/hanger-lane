@@ -1,8 +1,10 @@
 extern crate rand;
+extern crate network;
 
 use std::sync::mpsc::Receiver;
 use version::{Version, Publisher, Local};
 use super::{City, Traffic};
+use network::Network;
 
 pub enum SimulationMessage {
     Start,
@@ -62,8 +64,6 @@ impl Simulation {
 
                 self.evolve();
 
-                self.city.update();
-
                 match self.city.local {
                     Some(ref c) => {
                         println!("Simulating traffic with city version {}", c.id);
@@ -79,8 +79,26 @@ impl Simulation {
     }
 
     fn evolve(&mut self) {
-        for vehicle in self.traffic.vehicles.iter_mut() {
+
+        self.city.update();
+
+        if let Some(ref city) = self.city.local {
+            println!("Edges");
+            let edges = city.create_edges();
+            println!("Network");
+            let network = Network::new(city.get_num_nodes(), &edges);
+            println!("Dijkstra");
+            let costs = network.dijkstra(0);
+
+            for vehicle in self.traffic.vehicles.iter_mut() {
+                // Find node that vehicle occupies
+                // Find adjacent nodes (easy using network)
+                // Filter this to free nodes
+                // Get lowest cost node
+                // Work out cell corresponding to this node
+            }
         }
+
     }
 
 }

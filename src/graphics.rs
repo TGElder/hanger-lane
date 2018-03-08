@@ -39,7 +39,7 @@ impl Graphics{
     pub fn create_window(title: &str, width: u32, height: u32, opengl: OpenGL) -> Window {
         WindowSettings::new(title, [width, height])
             .opengl(opengl)
-            .fullscreen(true)
+            .fullscreen(false)
             .exit_on_esc(true)
             .build()
             .unwrap()
@@ -125,7 +125,7 @@ impl Render for Cell {
 
         const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 
-        let square = rectangle::square(self.x as f64/34f64, self.y as f64/61f64, 2.0);
+        let square = rectangle::square(self.x as f64, self.y as f64, 1.0);
         rectangle(BLACK, square, context.transform, graphics);
     }
 }
