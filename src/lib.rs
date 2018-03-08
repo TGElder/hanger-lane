@@ -10,8 +10,10 @@ pub mod ui;
 
 use rand::Rng;
 
+const DIRECTIONS: [Direction; 4] = [Direction::North, Direction::East, Direction::South, Direction::West];
+
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum Direction {
+pub enum Direction {
     North,
     South,
     East,
@@ -20,7 +22,7 @@ enum Direction {
 
 
 #[derive(Clone, Debug, PartialEq)]
-struct Cell {
+pub struct Cell {
     x: u32,
     y: u32,
     d: Direction,
@@ -35,7 +37,7 @@ impl Cell {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-struct Road {
+pub struct Road {
     x: u32,
     y: u32,
     entry: Direction,
@@ -69,22 +71,20 @@ pub struct City {
 use network::Edge;
 
 impl City {
-    fn new(width: u32, height: u32) -> City {
+    pub fn new(width: u32, height: u32) -> City {
         City{ id: 0, width, height, roads: vec![] }
     }
 
-    fn from(_: &str) -> City {
+    pub fn from(_: &str) -> City {
         City::new(1024, 1024)
     }
 
-    fn with_all_roads(width: u32, height: u32) -> City {
-
-		let directions = [Direction::North, Direction::East, Direction::South, Direction::West];
+    pub fn with_all_roads(width: u32, height: u32) -> City {
 
         let mut roads = Vec::with_capacity((width * height * 12) as usize);
 
-        for exit in directions.iter() {
-            for entry in directions.iter().filter(|d| *d != exit) {
+        for exit in DIRECTIONS.iter() {
+            for entry in DIRECTIONS.iter().filter(|d| *d != exit) {
                 for y in 0..height {
                     for x in 0..width {
                         roads.push(Road::new(x, y, *entry, *exit));
@@ -107,7 +107,7 @@ impl City {
         }
     }
 
-    fn get_index(&self, &Cell{ref x, ref y, ref d}: &Cell) -> u32 {
+    pub fn get_index(&self, &Cell{ref x, ref y, ref d}: &Cell) -> u32 {
 
         fn get_direction_index(d: &Direction) -> u32 {
             match d {
@@ -121,11 +121,19 @@ impl City {
         x + (y * self.width) + (get_direction_index(d) * self.width * self.height)
     }
 
-    fn get_num_nodes(&self) -> u32 {
+    pub fn get_cell(&self, index: u32) -> Cell {
+        let d = index / (self.width * self.height);
+        let r = index % (self.width * self.height);
+        let y = r / self.width;
+        let x = r % self.width;
+        Cell::new(x, y, DIRECTIONS[d as usize])
+    }
+
+    pub fn get_num_nodes(&self) -> u32 {
 		self.width * self.height * 4
 	}
 
-	fn create_edges(&self) -> Vec<Edge> {
+	pub fn create_edges(&self) -> Vec<Edge> {
         let mut out = vec![];
         for road in self.roads.iter() {
             if let Some(forward) = self.forward(&road.get_exit()) {
@@ -149,8 +157,8 @@ impl Traffic {
         Traffic{
             id: 0,
             vehicles: (0..size).map(|_| Cell{
-                x: rng.gen_range(0, 64),
-                y: rng.gen_range(0, 64),
+                x: rng.gen_range(0, 512),
+                y: rng.gen_range(0, 512),
                 d: Direction::North,
             }).collect() }
     }
@@ -159,7 +167,7 @@ impl Traffic {
 #[cfg(test)]
 mod tests {
 
-    use {Cell, Road, City, Direction};
+    use {Cell, Road, City, Direction, DIRECTIONS};
     use network::Edge;
     use hamcrest::prelude::*;
 
@@ -178,14 +186,12 @@ mod tests {
     }
 
     #[test]
-    fn test_get_index() {
+    fn test_get_index_get_cell() {
         let city = City::new(5, 3);
-
-		let directions = [Direction::North, Direction::East, Direction::South, Direction::West];
 
         let mut cells = Vec::with_capacity((city.width * city.height * 4) as usize);
 
-        for d in directions.iter() {
+        for d in DIRECTIONS.iter() {
             for y in 0..city.height {
                 for x in 0..city.width {
                     cells.push( Cell { x, y, d: d.clone() } );
@@ -195,6 +201,7 @@ mod tests {
 
         for (index, cell) in cells.iter().enumerate() {
             assert!(city.get_index(&cell) == index as u32);
+            assert!(city.get_cell(index as u32) == *cell);
         }
     }
 

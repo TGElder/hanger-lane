@@ -92,7 +92,9 @@ impl Simulation {
 
             for vehicle in self.traffic.vehicles.iter_mut() {
                 // Find node that vehicle occupies
+                let node = city.get_index(vehicle);
                 // Find adjacent nodes (easy using network)
+                let neighbours: Vec<u32> = network.get_out(node).iter().map(|e| e.to).collect();
                 // Filter this to free nodes
                 // Get lowest cost node
                 // Work out cell corresponding to this node

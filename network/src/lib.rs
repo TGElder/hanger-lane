@@ -3,9 +3,9 @@ extern crate num;
 
 #[derive(PartialEq, Debug)]
 pub struct Edge {
-    from: u32,
-    to: u32,
-    cost: u8,
+    pub from: u32,
+    pub to: u32,
+    pub cost: u8,
 }
 
 impl Edge {
