@@ -4,7 +4,7 @@ extern crate glutin_window;
 extern crate opengl_graphics;
 
 use version::{Version, Local};
-use super::{City, Traffic, Vehicle};
+use super::{Cell, City, Traffic};
 use self::piston::window::WindowSettings;
 use self::piston::event_loop::*;
 use self::piston::input::*;
@@ -118,7 +118,7 @@ impl Render for Traffic {
     }
 }
 
-impl Render for Vehicle {
+impl Render for Cell {
 
     fn render(&self, graphics: &mut GlGraphics, context: &Context) {
         use graphics::graphics::rectangle;

@@ -80,8 +80,6 @@ impl Simulation {
 
     fn evolve(&mut self) {
         for vehicle in self.traffic.vehicles.iter_mut() {
-            vehicle.x = (vehicle.x as i32 + vehicle.vx as i32) as u16;
-            vehicle.y = (vehicle.y as i32 + vehicle.vy as i32) as u16;
         }
     }
 

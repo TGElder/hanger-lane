@@ -32,7 +32,7 @@ impl Cell {
 
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct Road {
     x: u32,
     y: u32,
@@ -73,6 +73,25 @@ impl City {
 
     fn from(_: &str) -> City {
         City::new(1024, 1024)
+    }
+
+    fn with_all_roads(width: u32, height: u32) -> City {
+
+		let directions = [Direction::North, Direction::East, Direction::South, Direction::West];
+
+        let mut roads = Vec::with_capacity((width * height * 12) as usize);
+
+        for exit in directions.iter() {
+            for entry in directions.iter().filter(|d| *d != exit) {
+                for y in 0..height {
+                    for x in 0..width {
+                        roads.push(Road::new(x, y, *entry, *exit));
+                    }
+                }
+            }
+        }
+
+        City { id: 0, width, height, roads }
     }
 
     fn forward(&self, &Cell{ref x, ref y, ref d}: &Cell) -> Option<Cell> {
@@ -116,28 +135,19 @@ impl City {
 }
 
 #[derive(Clone, Debug)]
-struct Vehicle {
-    x: u16,
-    y: u16,
-    vx: i8,
-    vy: i8,
-}
-
-#[derive(Clone, Debug)]
 pub struct Traffic {
     id: usize,
-    vehicles: Vec<Vehicle>,
+    vehicles: Vec<Cell>,
 }
 
 impl Traffic {
     fn new(size: usize) -> Traffic {
         Traffic{
             id: 0,
-            vehicles: (0..size).map(|_| Vehicle{
-                x: rand::random::<u16>(),
-                y: rand::random::<u16>(),
-                vx: rand::random::<i8>()/32,
-                vy: rand::random::<i8>()/32,
+            vehicles: (0..size).map(|_| Cell{
+                x: rand::random::<u16>() as u32,
+                y: rand::random::<u16>() as u32,
+                d: Direction::North,
             }).collect() }
     }
 }
@@ -205,5 +215,31 @@ mod tests {
 
         assert_that!(&actual.iter().collect(), contains(expected.iter().collect()).exactly());
 
+    }
+
+    #[test]
+    fn test_with_all_roads() {
+        let city = City::with_all_roads(1, 1);
+
+        let expected = vec![
+            Road::new(0, 0, Direction::North, Direction::East),
+            Road::new(0, 0, Direction::North, Direction::South),
+            Road::new(0, 0, Direction::North, Direction::West),
+            Road::new(0, 0, Direction::East, Direction::North),
+            Road::new(0, 0, Direction::East, Direction::South),
+            Road::new(0, 0, Direction::East, Direction::West),
+            Road::new(0, 0, Direction::South, Direction::North),
+            Road::new(0, 0, Direction::South, Direction::East),
+            Road::new(0, 0, Direction::South, Direction::West),
+            Road::new(0, 0, Direction::West, Direction::North),
+            Road::new(0, 0, Direction::West, Direction::East),
+            Road::new(0, 0, Direction::West, Direction::South),
+        ];
+
+        assert_that!(&city.roads.iter().collect(), contains(expected.iter().collect()).exactly());
+        
+        let city = City::with_all_roads(5, 3);
+
+        assert_that!(city.roads.len(), is(equal_to(180)));
     }
 }
