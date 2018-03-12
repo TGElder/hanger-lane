@@ -37,17 +37,31 @@ impl <T: Clone> Local<T> {
         }
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self) -> bool {
         match *self.latest.read().unwrap() {
             Some(ref p) => {
                 if match self.local {
                     Some(ref l) => !Arc::ptr_eq(p, l), // No point cloning the reference if it still points to the same value
-                        None => true,
-                } {
+                    None => true, }
+                {
                     self.local = Some(Arc::clone(p));
+                    true
+                }
+                else {
+                    false
                 }
             },
-            None => self.local = None,
+            None => {
+                match self.local {
+                    Some(_) => {
+                        self.local = None;
+                        true
+                    },
+                    None => {
+                        false
+                    }
+                }
+            },
         }
     }
 
