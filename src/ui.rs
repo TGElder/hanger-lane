@@ -16,13 +16,13 @@ impl UI {
     pub fn launch() {
         let city = Arc::new(RwLock::new(None));
         let mut city_publisher = Publisher::new(&city);
-        city_publisher.publish(&City::with_all_roads(512, 512));
+        city_publisher.publish(&City::with_all_roads(256, 256));
 
         let traffic = Arc::new(RwLock::new(None));
 
         let (sim_tx, sim_rx) = mpsc::channel();
         let mut sim = Simulation::new(sim_rx, &city, 512, &traffic);
-        let mut graphics = Graphics::new(&city, &traffic, "Hanger Lane", 512, 512);
+        let mut graphics = Graphics::new(&city, &traffic, "Hanger Lane", 1024, 1024);
         let mut editor = Editor::new(&city);
 
         let sim_handle = thread::spawn(move || {

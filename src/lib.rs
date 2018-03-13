@@ -84,7 +84,7 @@ impl City {
         let mut roads = Vec::with_capacity((width * height * 12) as usize);
 
         for exit in DIRECTIONS.iter() {
-            for entry in DIRECTIONS.iter().filter(|d| *d != exit) {
+            for (i, entry) in DIRECTIONS.iter().enumerate().filter(|&(i, d)| *exit != DIRECTIONS[(i + 2) % 4]) {
                 for y in 0..height {
                     for x in 0..width {
                         roads.push(Road::new(x, y, *entry, *exit));
@@ -157,9 +157,9 @@ impl Traffic {
         Traffic{
             id: 0,
             vehicles: (0..size).map(|_| Cell{
-                x: rng.gen_range(0, 512),
-                y: rng.gen_range(0, 512),
-                d: Direction::North,
+                x: rng.gen_range(0, 256),
+                y: rng.gen_range(0, 256),
+                d: DIRECTIONS[rng.gen_range(0, 4)],
             }).collect() }
     }
 }
@@ -234,16 +234,16 @@ mod tests {
 
         let expected = vec![
             Road::new(0, 0, Direction::North, Direction::East),
-            Road::new(0, 0, Direction::North, Direction::South),
+            Road::new(0, 0, Direction::North, Direction::North),
             Road::new(0, 0, Direction::North, Direction::West),
             Road::new(0, 0, Direction::East, Direction::North),
+            Road::new(0, 0, Direction::East, Direction::East),
             Road::new(0, 0, Direction::East, Direction::South),
-            Road::new(0, 0, Direction::East, Direction::West),
-            Road::new(0, 0, Direction::South, Direction::North),
             Road::new(0, 0, Direction::South, Direction::East),
+            Road::new(0, 0, Direction::South, Direction::South),
             Road::new(0, 0, Direction::South, Direction::West),
             Road::new(0, 0, Direction::West, Direction::North),
-            Road::new(0, 0, Direction::West, Direction::East),
+            Road::new(0, 0, Direction::West, Direction::West),
             Road::new(0, 0, Direction::West, Direction::South),
         ];
 
@@ -253,4 +253,5 @@ mod tests {
 
         assert_that!(city.roads.len(), is(equal_to(180)));
     }
+
 }
