@@ -34,7 +34,7 @@ impl UI {
             thread::sleep(Duration::from_secs(1));
             sim_tx_2.send(SimulationMessage::Start).unwrap();
 
-            thread::sleep(Duration::from_secs(10));
+            thread::sleep(Duration::from_secs(30));
             editor.run();
 
             thread::sleep(Duration::from_secs(1));
