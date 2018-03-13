@@ -125,7 +125,7 @@ impl Render for Cell {
 
         const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 
-        let square = rectangle::square(self.x as f64 * 4.0, self.y as f64 * 4.0, 4.0);
+        let square = rectangle::square(self.x as f64 * 2.0, self.y as f64 * 2.0, 2.0);
         rectangle(BLACK, square, context.transform, graphics);
     }
 }

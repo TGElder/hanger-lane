@@ -58,7 +58,8 @@ impl Simulation {
                 println!("Network");
                 let network = Network::new(city.get_num_nodes(), &edges);
                 println!("Dijkstra");
-                let costs = network.dijkstra(32896);
+                use super::Direction;
+                let costs = network.dijkstra(city.get_index(&Cell{x: 256, y: 256, d: Direction::West}));
 
                 let mut occupancy = vec![vec![false; city.width as usize]; city.height as usize];
 
@@ -75,21 +76,17 @@ impl Simulation {
                     for vehicle in self.traffic.vehicles.iter_mut() {
                         // Find node that vehicle occupies
                         let node = city.get_index(vehicle);
-                        println!("Node: {}", node);
                         // Find adjacent nodes (easy using network)
-                        let neighbours: Vec<u32> = network.get_out(node).iter().map(|e| e.to).collect();
-                        println!("Neighbours: {:?}", neighbours);
+                        let neighbours: Vec<u32> = network.get_out(node).iter().flat_map(|e| network.get_out(e.to)).flat_map(|e| network.get_out(e.to)).map(|e| e.to).collect();
                         // Filter this to free nodes
                         let free_neighbours: Vec<u32> = neighbours.iter().cloned()
                             .filter(|n| {
                                 let cell = city.get_cell(*n);
                                 !occupancy.get(cell.x as usize).unwrap().get(cell.y as usize).unwrap()
                             }).collect();
-                        println!("Free neighbours: {:?}", free_neighbours);
                         // Get lowest cost node
                         let lowest_cost = free_neighbours.iter().cloned()
                             .min_by(|a, b| costs.get(*a as usize).unwrap().cmp(costs.get(*b as usize).unwrap()));
-                        println!("Lowest cost: {:?}", lowest_cost);
                         // Work out cell corresponding to this node
                         if let Some(lowest_cost) = lowest_cost {
                             if costs.get(lowest_cost as usize).unwrap() < costs.get(node as usize).unwrap() {
@@ -103,7 +100,6 @@ impl Simulation {
                         }
                     }
                     self.traffic.id += 1;
-                    println!("{}", self.traffic.id);
                     self.traffic_publisher.publish(&self.traffic);
                     check_messages(&mut self.rx, &mut self.running, &mut self.shutting_down);
                 }

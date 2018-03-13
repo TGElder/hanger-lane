@@ -157,8 +157,8 @@ impl Traffic {
         Traffic{
             id: 0,
             vehicles: (0..size).map(|_| Cell{
-                x: rng.gen_range(0, 256),
-                y: rng.gen_range(0, 256),
+                x: rng.gen_range(0, 512),
+                y: rng.gen_range(0, 512),
                 d: DIRECTIONS[rng.gen_range(0, 4)],
             }).collect() }
     }
