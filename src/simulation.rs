@@ -2,9 +2,10 @@ extern crate rand;
 extern crate network;
 
 use std::sync::mpsc::Receiver;
+use std::sync::Arc;
 use version::{Version, Publisher, Local};
 use super::{City, Traffic, Cell};
-use network::{Network, Edge};
+use network::Network;
 use rand::Rng;
 
 pub enum SimulationMessage {
@@ -45,28 +46,31 @@ impl Simulation {
 
         while !self.shutting_down {
 
-            while(!self.running) {
+            while !self.running {
                 println!("Paused");
-                check_messages(&mut self.rx, &mut self.running, &mut self.shutting_down);
+                self.check_messages();
             }
 
             self.city.update();
 
-            let city = &self.city.local;
+            let city = match self.city.local {
+                Some(ref city) => Some(Arc::clone(city)),
+                None => None,
+            };
 
-            if let &Some(ref city) = city {
+            if let Some(ref city) = city {
                 let node_count = city.get_num_nodes();
                 println!("Edges");
                 let edges = city.create_edges();
                 println!("Network");
-                let network = Network::new(city.get_num_nodes(), &edges);
+                let network = Network::new(node_count, &edges);
                 println!("Dijkstra");
                 use super::Direction;
                 let costs = network.dijkstra(city.get_index(&Cell{x: 256, y: 256, d: Direction::West}));
 
                 let mut occupancy = vec![vec![false; city.width as usize]; city.height as usize];
 
-                while (self.running) {
+                while self.running {
                     println!("Simulating traffic with city version {}", city.id);
                     println!("Clearing occupancy");
                     clear_matrix(&mut occupancy);
@@ -110,42 +114,42 @@ impl Simulation {
                     }
                     self.traffic.id += 1;
                     self.traffic_publisher.publish(&self.traffic);
-                    check_messages(&mut self.rx, &mut self.running, &mut self.shutting_down);
+                    self.check_messages();
                 }
 
             }
             else {
-                while (self.running) {
+                while self.running {
                     println!("No city to simulate");
-                    check_messages(&mut self.rx, &mut self.running, &mut self.shutting_down);
+                    self.check_messages();
                 }
             }
-
-            
         }
-        fn check_messages(rx: &mut Receiver<SimulationMessage>, running: &mut bool, shutting_down: &mut bool) {
-            match rx.try_recv() {
-                Ok(m) => {
-                    match m {
-                        SimulationMessage::Start => {
-                            println!("Starting simulation");
-                            *running = true;
-                        },
-                        SimulationMessage::Pause => {
-                            println!("Pausing simulation");
-                            *running = false;
-                        },
-                        SimulationMessage::Shutdown => {
-                            println!("Shutting down simulation");
-                            *running = false;
-                            *shutting_down = true;
-                        },
-                    }
-                },
-                _ => (),
-            }
 
+    }
+
+    fn check_messages(&mut self) {
+        match self.rx.try_recv() {
+            Ok(m) => {
+                match m {
+                    SimulationMessage::Start => {
+                        println!("Starting simulation");
+                        self.running = true;
+                    },
+                    SimulationMessage::Pause => {
+                        println!("Pausing simulation");
+                        self.running = false;
+                    },
+                    SimulationMessage::Shutdown => {
+                        println!("Shutting down simulation");
+                        self.running = false;
+                        self.shutting_down = true;
+                    },
+                }
+            },
+            _ => (),
         }
+
     }
 
 }

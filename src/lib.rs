@@ -84,7 +84,7 @@ impl City {
         let mut roads = Vec::with_capacity((width * height * 12) as usize);
 
         for exit in DIRECTIONS.iter() {
-            for (i, entry) in DIRECTIONS.iter().enumerate().filter(|&(i, d)| *exit != DIRECTIONS[(i + 2) % 4]) {
+            for (_, entry) in DIRECTIONS.iter().enumerate().filter(|&(i, _)| *exit != DIRECTIONS[(i + 2) % 4]) {
                 for y in 0..height {
                     for x in 0..width {
                         roads.push(Road::new(x, y, *entry, *exit));
