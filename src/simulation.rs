@@ -5,6 +5,7 @@ use std::sync::mpsc::Receiver;
 use version::{Version, Publisher, Local};
 use super::{City, Traffic, Cell};
 use network::{Network, Edge};
+use rand::Rng;
 
 pub enum SimulationMessage {
     Start,
@@ -39,6 +40,8 @@ impl Simulation {
 
 
     pub fn run(&mut self) {
+
+        let mut rng = rand::thread_rng();
 
         while !self.shutting_down {
 
@@ -77,21 +80,27 @@ impl Simulation {
                         // Find node that vehicle occupies
                         let node = city.get_index(vehicle);
                         // Find adjacent nodes (easy using network)
-                        let neighbours: Vec<u32> = network.get_out(node).iter().flat_map(|e| network.get_out(e.to)).flat_map(|e| network.get_out(e.to)).map(|e| e.to).collect();
+                        let neighbours: Vec<u32> = network.get_out(node).iter().map(|e| e.to).collect();
                         // Filter this to free nodes
                         let free_neighbours: Vec<u32> = neighbours.iter().cloned()
                             .filter(|n| {
                                 let cell = city.get_cell(*n);
                                 !occupancy.get(cell.x as usize).unwrap().get(cell.y as usize).unwrap()
                             }).collect();
-                        // Get lowest cost node
-                        let lowest_cost = free_neighbours.iter().cloned()
-                            .min_by(|a, b| costs.get(*a as usize).unwrap().cmp(costs.get(*b as usize).unwrap()));
-                        // Work out cell corresponding to this node
+                        // Get lowest cost of neighbour
+                        let lowest_cost = free_neighbours.iter()
+                            .map(|n| costs.get(*n as usize))
+                            .min();
                         if let Some(lowest_cost) = lowest_cost {
-                            if costs.get(lowest_cost as usize).unwrap() < costs.get(node as usize).unwrap() {
+                            if lowest_cost < costs.get(node as usize) {
+                                // Get some neighbour with lowest cost
+                                let candidates: Vec<u32> = free_neighbours.iter().cloned()
+                                    .filter(|n| costs.get(*n as usize) == lowest_cost)
+                                    .collect();
+                                let selected = rng.choose(&candidates).unwrap();
+                                
                                 *occupancy.get_mut(vehicle.x as usize).unwrap().get_mut(vehicle.y as usize).unwrap() = false;
-                                let cell = city.get_cell(lowest_cost);
+                                let cell = city.get_cell(*selected);
                                 vehicle.x = cell.x;
                                 vehicle.y = cell.y;
                                 vehicle.d = cell.d;
@@ -114,32 +123,33 @@ impl Simulation {
 
             
         }
-    }
-
-}
-
-fn check_messages(rx: &mut Receiver<SimulationMessage>, running: &mut bool, shutting_down: &mut bool) {
-    match rx.try_recv() {
-        Ok(m) => {
-            match m {
-                SimulationMessage::Start => {
-                    println!("Starting simulation");
-                    *running = true;
+        fn check_messages(rx: &mut Receiver<SimulationMessage>, running: &mut bool, shutting_down: &mut bool) {
+            match rx.try_recv() {
+                Ok(m) => {
+                    match m {
+                        SimulationMessage::Start => {
+                            println!("Starting simulation");
+                            *running = true;
+                        },
+                        SimulationMessage::Pause => {
+                            println!("Pausing simulation");
+                            *running = false;
+                        },
+                        SimulationMessage::Shutdown => {
+                            println!("Shutting down simulation");
+                            *running = false;
+                            *shutting_down = true;
+                        },
+                    }
                 },
-                SimulationMessage::Pause => {
-                    println!("Pausing simulation");
-                    *running = false;
-                },
-                SimulationMessage::Shutdown => {
-                    println!("Shutting down simulation");
-                    *shutting_down = true;
-                },
+                _ => (),
             }
-        },
-        _ => (),
+
+        }
     }
 
 }
+
 
 
 fn clear_matrix(matrix: &mut Vec<Vec<bool>>) {
