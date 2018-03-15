@@ -59,6 +59,7 @@ impl Simulation {
             };
 
             if let Some(ref city) = city {
+                let target = city.get_index(&Cell{x: 256, y: 256, d: Direction::East});
                 let node_count = city.get_num_nodes();
                 println!("Edges");
                 let edges = city.create_edges();
@@ -66,19 +67,19 @@ impl Simulation {
                 let network = Network::new(node_count, &edges);
                 println!("Dijkstra");
                 use super::Direction;
-                let costs = network.dijkstra(city.get_index(&Cell{x: 256, y: 256, d: Direction::West}));
+                let costs = network.dijkstra(target);
 
                 let mut occupancy = vec![vec![false; city.width as usize]; city.height as usize];
+                clear_matrix(&mut occupancy);
+
+                println!("Setting occupancy");
+                for vehicle in self.traffic.vehicles.iter_mut() {
+                    *occupancy.get_mut(vehicle.x as usize).unwrap().get_mut(vehicle.y as usize).unwrap() = true;
+                }
 
                 while self.running {
                     println!("Simulating traffic with city version {}", city.id);
                     println!("Clearing occupancy");
-                    clear_matrix(&mut occupancy);
-
-                    println!("Setting occupancy");
-                    for vehicle in self.traffic.vehicles.iter_mut() {
-                        *occupancy.get_mut(vehicle.x as usize).unwrap().get_mut(vehicle.y as usize).unwrap() = true;
-                    }
 
                     for vehicle in self.traffic.vehicles.iter_mut() {
                         // Find node that vehicle occupies
@@ -108,7 +109,10 @@ impl Simulation {
                                 vehicle.x = cell.x;
                                 vehicle.y = cell.y;
                                 vehicle.d = cell.d;
-                                *occupancy.get_mut(vehicle.x as usize).unwrap().get_mut(vehicle.y as usize).unwrap() = true;
+                                    
+                                if (*selected != target) {
+                                    *occupancy.get_mut(vehicle.x as usize).unwrap().get_mut(vehicle.y as usize).unwrap() = true;
+                                }
                             }
                         }
                     }
