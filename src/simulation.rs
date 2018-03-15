@@ -5,34 +5,34 @@ use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use version::{Version, Publisher, Local};
 use super::{City, Traffic, Cell, Direction};
-use network::{Network, Edge};
-use rand::{Rng, ThreadRng};
+use network::Network;
+use rand::Rng;
 
-pub enum SimulatorMessage {
+pub enum SimulationMessage {
     Start,
     Pause,
     Shutdown,
 }
 
-pub struct Simulator {
-    rx: Receiver<SimulatorMessage>,
+pub struct Simulation {
+    rx: Receiver<SimulationMessage>,
     city: Local<City>,
-    vehicles: usize,
+    traffic: Traffic,
     traffic_publisher: Publisher<Traffic>,
     running: bool,
     shutting_down: bool,
 }
 
-impl Simulator {
+impl Simulation {
 
-    pub fn new(rx: Receiver<SimulatorMessage>,
+    pub fn new(rx: Receiver<SimulationMessage>,
                city: &Version<City>,
                vehicles: usize,
-               traffic: &Version<Traffic>) -> Simulator {
-        Simulator{
+               traffic: &Version<Traffic>) -> Simulation {
+        Simulation{
             rx,
             city: Local::new(city),
-            vehicles,
+            traffic: Traffic::new(vehicles),
             traffic_publisher: Publisher::new(traffic),
             running: false,
             shutting_down: false,
@@ -41,6 +41,8 @@ impl Simulator {
 
 
     pub fn run(&mut self) {
+
+        let mut rng = rand::thread_rng();
 
         while !self.shutting_down {
 
@@ -57,13 +59,51 @@ impl Simulator {
             };
 
             if let Some(ref city) = city {
+                let target = city.get_index(&Cell{x: 256, y: 256, d: Direction::East});
+                let node_count = city.get_num_nodes();
                 let edges = city.create_edges();
-                let mut simulation = Simulation::new(city, &edges, &self.vehicles);
+                let network = Network::new(node_count, &edges);
+                let costs = network.dijkstra(target);
+                let mut occupancy = Occupancy::new(city, &self.traffic.vehicles);
 
                 while self.running {
-                    simulation.step();
+                    println!("Simulating traffic with city version {}", city.id);
+                    println!("Clearing occupancy");
+
+                    for vehicle in self.traffic.vehicles.iter_mut() {
+                        let node = city.get_index(vehicle);
+                        let neighbours: Vec<u32> = network.get_out(node).iter().map(|e| e.to).collect();
+                        let free_neighbours: Vec<u32> = neighbours.iter().cloned()
+                            .filter(|n| {
+                                let cell = city.get_cell(*n);
+                                !occupancy.is_free(cell.x as usize, cell.y as usize)
+                            }).collect();
+                        let lowest_cost = free_neighbours.iter()
+                            .map(|n| costs.get(*n as usize))
+                            .min();
+                        if let Some(lowest_cost) = lowest_cost {
+                            if lowest_cost < costs.get(node as usize) {
+                                // Get some neighbour with lowest cost
+                                let candidates: Vec<u32> = free_neighbours.iter().cloned()
+                                    .filter(|n| costs.get(*n as usize) == lowest_cost)
+                                    .collect();
+                                let selected = rng.choose(&candidates).unwrap();
+                                
+                                occupancy.free(vehicle);
+                                let cell = city.get_cell(*selected);
+                                vehicle.x = cell.x;
+                                vehicle.y = cell.y;
+                                vehicle.d = cell.d;
+                                    
+                                if *selected != target {
+                                    occupancy.occupy(vehicle);
+                                }
+                            }
+                        }
+                    }
+                    self.traffic.id += 1;
+                    self.traffic_publisher.publish(&self.traffic);
                     self.check_messages();
-                    self.traffic_publisher.publish(&simulation.traffic);
                 }
 
             }
@@ -81,15 +121,15 @@ impl Simulator {
         match self.rx.try_recv() {
             Ok(m) => {
                 match m {
-                    SimulatorMessage::Start => {
+                    SimulationMessage::Start => {
                         println!("Starting simulation");
                         self.running = true;
                     },
-                    SimulatorMessage::Pause => {
+                    SimulationMessage::Pause => {
                         println!("Pausing simulation");
                         self.running = false;
                     },
-                    SimulatorMessage::Shutdown => {
+                    SimulationMessage::Shutdown => {
                         println!("Shutting down simulation");
                         self.running = false;
                         self.shutting_down = true;
@@ -99,78 +139,6 @@ impl Simulator {
             _ => (),
         }
 
-    }
-
-}
-
-struct Simulation<'a> {
-    rng: ThreadRng,
-    traffic: Traffic,
-    city: &'a Arc<City>,
-    target: u32,
-    node_count: u32,
-    network: Network<'a>,
-    costs: Vec<Option<u32>>,
-    occupancy: Occupancy,
-}
-
-impl <'a> Simulation<'a> {
-
-    fn new(city: &'a Arc<City>, edges: &'a Vec<Edge>, vehicles: &usize) -> Simulation<'a> {
-        let target = city.get_index(&Cell{x: 256, y: 256, d: Direction::East});
-        let node_count = city.get_num_nodes();
-        let network = Network::new(node_count, edges);
-        let costs = network.dijkstra(target);
-        let traffic = Traffic::new(*vehicles);
-        let mut occupancy = Occupancy::new(city, &traffic.vehicles);
-        Simulation {
-            rng: rand::thread_rng(),
-            traffic,
-            city,
-            target,
-            node_count,
-            network,
-            costs,
-            occupancy
-        }
-    }
-
-    fn step(&mut self) {
-        println!("Simulating traffic with city version {}", self.city.id);
-        println!("Clearing occupancy");
-
-        for vehicle in self.traffic.vehicles.iter_mut() {
-            let node = self.city.get_index(vehicle);
-            let neighbours: Vec<u32> = self.network.get_out(node).iter().map(|e| e.to).collect();
-            let free_neighbours: Vec<u32> = neighbours.iter().cloned()
-                .filter(|n| {
-                    let cell = self.city.get_cell(*n);
-                    !self.occupancy.is_free(cell.x as usize, cell.y as usize)
-                }).collect();
-            let lowest_cost = free_neighbours.iter()
-                .map(|n| self.costs.get(*n as usize))
-                .min();
-            if let Some(lowest_cost) = lowest_cost {
-                if lowest_cost < self.costs.get(node as usize) {
-                    // Get some neighbour with lowest cost
-                    let candidates: Vec<u32> = free_neighbours.iter().cloned()
-                        .filter(|n| self.costs.get(*n as usize) == lowest_cost)
-                        .collect();
-                    let selected = self.rng.choose(&candidates).unwrap();
-                    
-                    self.occupancy.free(vehicle);
-                    let cell = self.city.get_cell(*selected);
-                    vehicle.x = cell.x;
-                    vehicle.y = cell.y;
-                    vehicle.d = cell.d;
-                        
-                    if *selected != self.target {
-                        self.occupancy.occupy(vehicle);
-                    }
-                }
-            }
-        }
-        self.traffic.id += 1;
     }
 
 }
