@@ -1,6 +1,5 @@
 use std::thread;
-use std::sync::{Arc, RwLock, mpsc};
-use std::sync::mpsc::Sender;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use version::Publisher;
 use simulation::Simulator;
@@ -20,8 +19,8 @@ impl UI {
 
         let traffic = Arc::new(RwLock::new(None));
 
-        let mut sim_run = Arc::new(RwLock::new(true));
-        let mut sim_shutdown = Arc::new(RwLock::new(false));
+        let sim_run = Arc::new(RwLock::new(true));
+        let sim_shutdown = Arc::new(RwLock::new(false));
         let mut sim = Simulator::new(&city, &traffic, Arc::clone(&sim_run), Arc::clone(&sim_shutdown));
         let mut graphics = Graphics::new(&city, &traffic, "Hanger Lane", 1024, 1024);
         let mut editor = Editor::new(&city);

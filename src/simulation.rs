@@ -1,12 +1,45 @@
 extern crate rand;
 extern crate network;
 
-use std::sync::mpsc::Receiver;
 use std::sync::{Arc, RwLock};
 use version::{Version, Publisher, Local};
 use super::{City, Traffic, Cell, Direction};
 use network::Network;
 use rand::{Rng, ThreadRng};
+
+#[derive(Clone)]
+struct Occupancy {
+    occupancy: Vec<Vec<bool>>,
+}
+
+impl Occupancy {
+
+    fn new(city: &City, vehicles: &Vec<Cell>) -> Occupancy {
+        let occupancy = vec![vec![false; city.width as usize]; city.height as usize];
+        let mut out = Occupancy{ occupancy };
+        for vehicle in vehicles.iter() {
+            out.occupy(vehicle);
+        }
+        out
+    }
+    
+    fn is_free(&self, x: usize, y: usize) -> bool {
+        !self.occupancy.get(x).unwrap().get(y).unwrap()
+    }
+
+    fn set(&mut self, vehicle: &Cell, value: bool) {
+        *self.occupancy.get_mut(vehicle.x as usize).unwrap().get_mut(vehicle.y as usize).unwrap() = value;
+    }
+
+    fn free(&mut self, vehicle: &Cell) {
+        self.set(vehicle, false);
+    }
+
+    fn occupy(&mut self, vehicle: &Cell) {
+        self.set(vehicle, true);
+    }
+
+}
 
 #[derive(Clone)]
 pub struct SimulationState {
@@ -16,7 +49,7 @@ pub struct SimulationState {
 }
 
 pub struct Simulation {
-    target: usize,
+    target: Cell,
     city: Arc<City>,
     network: Network,
     costs: Vec<Option<u32>>,
@@ -25,10 +58,10 @@ pub struct Simulation {
 impl Simulation {
 
     fn new(city: &Arc<City>) -> Simulation {
-        let target = city.get_index(&Cell{x: 256, y: 256, d: Direction::East});
+        let target = Cell{x: 256, y: 256, d: Direction::East};
         let city = Arc::clone(city);
         let network = Network::new(city.get_num_nodes(), &city.create_edges());
-        let costs = network.dijkstra(target);
+        let costs = network.dijkstra(city.get_index(&target));
 
         Simulation{ target, city, network, costs }
     }
@@ -40,35 +73,40 @@ impl Simulation {
         let mut rng = state.rng;
 
         for vehicle in traffic.vehicles.iter_mut() {
-            let node = self.city.get_index(vehicle);
-            let neighbours: Vec<usize> = self.network.get_out(node).iter().map(|e| e.to).collect();
-            let free_neighbours: Vec<usize> = neighbours.iter().cloned()
-                .filter(|n| {
-                    let cell = self.city.get_cell(*n);
-                    occupancy.is_free(cell.x, cell.y)
-                }).collect();
-            let lowest_cost = free_neighbours.iter()
-                .map(|n| self.costs.get(*n))
-                .min();
-            if let Some(lowest_cost) = lowest_cost {
-                if lowest_cost < self.costs.get(node) {
-                    // Get some neighbour with lowest cost
-                    let candidates: Vec<usize> = free_neighbours.iter().cloned()
-                        .filter(|n| self.costs.get(*n) == lowest_cost)
-                        .collect();
-                    let selected = rng.choose(&candidates).unwrap();
-
-                    occupancy.free(vehicle);
-                        
-                    *vehicle = self.city.get_cell(*selected);
-                        
-                    if *selected != self.target {
-                        occupancy.occupy(vehicle);
-                    }
+            if let Some(next_position) = self.get_next_position(&vehicle, &occupancy, &mut rng) {
+                occupancy.free(vehicle);
+                if next_position != self.target {
+                    occupancy.occupy(&next_position);
                 }
+                *vehicle = next_position;
             }
         }
         SimulationState{ traffic, occupancy, rng }
+    }
+
+    fn get_next_position(&self, vehicle: &Cell, occupancy: &Occupancy, rng: &mut ThreadRng) -> Option<Cell> {
+        let node = self.city.get_index(vehicle);
+        let neighbours: Vec<usize> = self.network.get_out(node).iter().map(|e| e.to).collect();
+        let free_neighbours: Vec<usize> = neighbours.iter().cloned()
+            .filter(|n| {
+                let cell = self.city.get_cell(*n);
+                occupancy.is_free(cell.x, cell.y)
+            }).collect();
+        let lowest_cost = free_neighbours.iter()
+            .map(|n| self.costs.get(*n))
+            .min();
+        match lowest_cost {
+            Some(lowest_cost) if lowest_cost < self.costs.get(node) => {
+                // Get some neighbour with lowest cost
+                let candidates: Vec<usize> = free_neighbours.iter().cloned()
+                    .filter(|n| self.costs.get(*n) == lowest_cost)
+                    .collect();
+                let selected = rng.choose(&candidates).unwrap();
+
+                Some(self.city.get_cell(*selected))
+            },
+            _ => None
+        }
     }
 
 
@@ -134,39 +172,3 @@ impl Simulator {
     }
 
 }
-
-#[derive(Clone)]
-struct Occupancy {
-    occupancy: Vec<Vec<bool>>,
-}
-
-impl Occupancy {
-
-    fn new(city: &City, vehicles: &Vec<Cell>) -> Occupancy {
-        let occupancy = vec![vec![false; city.width as usize]; city.height as usize];
-        let mut out = Occupancy{ occupancy };
-        for vehicle in vehicles.iter() {
-            out.occupy(vehicle);
-        }
-        out
-    }
-    
-    fn is_free(&self, x: usize, y: usize) -> bool {
-        !self.occupancy.get(x).unwrap().get(y).unwrap()
-    }
-
-    fn set(&mut self, vehicle: &Cell, value: bool) {
-        *self.occupancy.get_mut(vehicle.x as usize).unwrap().get_mut(vehicle.y as usize).unwrap() = value;
-    }
-
-    fn free(&mut self, vehicle: &Cell) {
-        self.set(vehicle, false);
-    }
-
-    fn occupy(&mut self, vehicle: &Cell) {
-        self.set(vehicle, true);
-    }
-
-}
-
-
