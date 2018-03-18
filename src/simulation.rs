@@ -2,147 +2,140 @@ extern crate rand;
 extern crate network;
 
 use std::sync::mpsc::Receiver;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use version::{Version, Publisher, Local};
 use super::{City, Traffic, Cell, Direction};
 use network::Network;
-use rand::Rng;
+use rand::{Rng, ThreadRng};
 
-pub enum SimulationMessage {
-    Start,
-    Pause,
-    Shutdown,
+#[derive(Clone)]
+pub struct SimulationState {
+    traffic: Traffic,
+    occupancy: Occupancy,
+    rng: ThreadRng,
 }
 
 pub struct Simulation {
-    rx: Receiver<SimulationMessage>,
-    city: Local<City>,
-    traffic: Traffic,
-    traffic_publisher: Publisher<Traffic>,
-    running: bool,
-    shutting_down: bool,
+    target: usize,
+    city: Arc<City>,
+    network: Network,
+    costs: Vec<Option<u32>>,
 }
 
 impl Simulation {
 
-    pub fn new(rx: Receiver<SimulationMessage>,
-               city: &Version<City>,
-               vehicles: usize,
-               traffic: &Version<Traffic>) -> Simulation {
-        Simulation{
-            rx,
+    fn new(city: &Arc<City>) -> Simulation {
+        let target = city.get_index(&Cell{x: 256, y: 256, d: Direction::East});
+        let city = Arc::clone(city);
+        let network = Network::new(city.get_num_nodes(), &city.create_edges());
+        let costs = network.dijkstra(target);
+
+        Simulation{ target, city, network, costs }
+    }
+
+    fn step(&self, state: SimulationState) -> SimulationState {
+        let mut traffic = state.traffic;
+        traffic.id += 1;
+        let mut occupancy = state.occupancy;
+        let mut rng = state.rng;
+
+        for vehicle in traffic.vehicles.iter_mut() {
+            let node = self.city.get_index(vehicle);
+            let neighbours: Vec<usize> = self.network.get_out(node).iter().map(|e| e.to).collect();
+            let free_neighbours: Vec<usize> = neighbours.iter().cloned()
+                .filter(|n| {
+                    let cell = self.city.get_cell(*n);
+                    occupancy.is_free(cell.x, cell.y)
+                }).collect();
+            let lowest_cost = free_neighbours.iter()
+                .map(|n| self.costs.get(*n))
+                .min();
+            if let Some(lowest_cost) = lowest_cost {
+                if lowest_cost < self.costs.get(node) {
+                    // Get some neighbour with lowest cost
+                    let candidates: Vec<usize> = free_neighbours.iter().cloned()
+                        .filter(|n| self.costs.get(*n) == lowest_cost)
+                        .collect();
+                    let selected = rng.choose(&candidates).unwrap();
+
+                    occupancy.free(vehicle);
+                        
+                    *vehicle = self.city.get_cell(*selected);
+                        
+                    if *selected != self.target {
+                        occupancy.occupy(vehicle);
+                    }
+                }
+            }
+        }
+        SimulationState{ traffic, occupancy, rng }
+    }
+
+
+
+}
+
+
+pub struct Simulator {
+    city: Local<City>,
+    traffic_publisher: Publisher<Traffic>,
+    running: Arc<RwLock<bool>>,
+    shutting_down: Arc<RwLock<bool>>,
+}
+
+impl Simulator {
+
+    pub fn new(city: &Version<City>,
+               traffic: &Version<Traffic>,
+               running: Arc<RwLock<bool>>,
+               shutting_down: Arc<RwLock<bool>>) -> Simulator {
+        Simulator{
             city: Local::new(city),
-            traffic: Traffic::new(vehicles),
             traffic_publisher: Publisher::new(traffic),
-            running: false,
-            shutting_down: false,
+            running,
+            shutting_down,
         }
     }
 
 
     pub fn run(&mut self) {
 
-        let mut rng = rand::thread_rng();
+        while !*self.shutting_down.read().unwrap() {
 
-        while !self.shutting_down {
-
-            while !self.running {
+            while !*self.running.read().unwrap() {
                 println!("Paused");
-                self.check_messages();
             }
 
+            println!("Updating city");
             self.city.update();
 
-            let city = match self.city.local {
-                Some(ref city) => Some(Arc::clone(city)),
-                None => None,
-            };
+            if let Some(ref city) = self.city.local {
 
-            if let Some(ref city) = city {
-                let target = city.get_index(&Cell{x: 256, y: 256, d: Direction::East});
-                let node_count = city.get_num_nodes();
-                let edges = city.create_edges();
-                let network = Network::new(node_count, &edges);
-                let costs = network.dijkstra(target);
-                let mut occupancy = Occupancy::new(city, &self.traffic.vehicles);
+                println!("Setting up sim");
+                let sim = Simulation::new(city);
+                let traffic = Traffic::new(65536);
+                let occupancy = Occupancy::new(city, &traffic.vehicles);
+                let mut state = SimulationState{ traffic, occupancy, rng: rand::thread_rng()  };
 
-                while self.running {
-                    println!("Simulating traffic with city version {}", city.id);
-                    println!("Clearing occupancy");
-
-                    for vehicle in self.traffic.vehicles.iter_mut() {
-                        let node = city.get_index(vehicle);
-                        let neighbours: Vec<usize> = network.get_out(node).iter().map(|e| e.to).collect();
-                        let free_neighbours: Vec<usize> = neighbours.iter().cloned()
-                            .filter(|n| {
-                                let cell = city.get_cell(*n);
-                                !occupancy.is_free(cell.x as usize, cell.y as usize)
-                            }).collect();
-                        let lowest_cost = free_neighbours.iter()
-                            .map(|n| costs.get(*n as usize))
-                            .min();
-                        if let Some(lowest_cost) = lowest_cost {
-                            if lowest_cost < costs.get(node as usize) {
-                                // Get some neighbour with lowest cost
-                                let candidates: Vec<usize> = free_neighbours.iter().cloned()
-                                    .filter(|n| costs.get(*n as usize) == lowest_cost)
-                                    .collect();
-                                let selected = rng.choose(&candidates).unwrap();
-                                
-                                occupancy.free(vehicle);
-                                let cell = city.get_cell(*selected);
-                                vehicle.x = cell.x;
-                                vehicle.y = cell.y;
-                                vehicle.d = cell.d;
-                                    
-                                if *selected != target {
-                                    occupancy.occupy(vehicle);
-                                }
-                            }
-                        }
-                    }
-                    self.traffic.id += 1;
-                    self.traffic_publisher.publish(&self.traffic);
-                    self.check_messages();
+                println!("Stepping");
+                while *self.running.read().unwrap() {
+                    state = sim.step(state);
+                    self.traffic_publisher.publish(&state.traffic);
                 }
 
             }
             else {
-                while self.running {
+                while !*self.running.read().unwrap() {
                     println!("No city to simulate");
-                    self.check_messages();
                 }
             }
-        }
-
-    }
-
-    fn check_messages(&mut self) {
-        match self.rx.try_recv() {
-            Ok(m) => {
-                match m {
-                    SimulationMessage::Start => {
-                        println!("Starting simulation");
-                        self.running = true;
-                    },
-                    SimulationMessage::Pause => {
-                        println!("Pausing simulation");
-                        self.running = false;
-                    },
-                    SimulationMessage::Shutdown => {
-                        println!("Shutting down simulation");
-                        self.running = false;
-                        self.shutting_down = true;
-                    },
-                }
-            },
-            _ => (),
         }
 
     }
 
 }
 
+#[derive(Clone)]
 struct Occupancy {
     occupancy: Vec<Vec<bool>>,
 }
@@ -158,8 +151,8 @@ impl Occupancy {
         out
     }
     
-    fn is_free(&self, x: usize, y: usize) -> &bool {
-        self.occupancy.get(x).unwrap().get(y).unwrap()
+    fn is_free(&self, x: usize, y: usize) -> bool {
+        !self.occupancy.get(x).unwrap().get(y).unwrap()
     }
 
     fn set(&mut self, vehicle: &Cell, value: bool) {
