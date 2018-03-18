@@ -72,8 +72,8 @@ impl Simulation {
 
                     for vehicle in self.traffic.vehicles.iter_mut() {
                         let node = city.get_index(vehicle);
-                        let neighbours: Vec<u32> = network.get_out(node).iter().map(|e| e.to).collect();
-                        let free_neighbours: Vec<u32> = neighbours.iter().cloned()
+                        let neighbours: Vec<usize> = network.get_out(node).iter().map(|e| e.to).collect();
+                        let free_neighbours: Vec<usize> = neighbours.iter().cloned()
                             .filter(|n| {
                                 let cell = city.get_cell(*n);
                                 !occupancy.is_free(cell.x as usize, cell.y as usize)
@@ -84,7 +84,7 @@ impl Simulation {
                         if let Some(lowest_cost) = lowest_cost {
                             if lowest_cost < costs.get(node as usize) {
                                 // Get some neighbour with lowest cost
-                                let candidates: Vec<u32> = free_neighbours.iter().cloned()
+                                let candidates: Vec<usize> = free_neighbours.iter().cloned()
                                     .filter(|n| costs.get(*n as usize) == lowest_cost)
                                     .collect();
                                 let selected = rng.choose(&candidates).unwrap();

@@ -23,14 +23,14 @@ pub enum Direction {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cell {
-    x: u32,
-    y: u32,
+    x: usize,
+    y: usize,
     d: Direction,
 }
 
 impl Cell {
 
-    pub fn new(x: u32, y: u32, d: Direction) -> Cell {
+    pub fn new(x: usize, y: usize, d: Direction) -> Cell {
         Cell{x, y, d}
     }
 
@@ -38,15 +38,15 @@ impl Cell {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Road {
-    x: u32,
-    y: u32,
+    x: usize,
+    y: usize,
     entry: Direction,
     exit: Direction,
 }
 
 impl Road {
 
-    pub fn new(x: u32, y: u32, entry: Direction, exit: Direction) -> Road {
+    pub fn new(x: usize, y: usize, entry: Direction, exit: Direction) -> Road {
         Road{x, y, entry, exit}
     }
 
@@ -63,15 +63,15 @@ impl Road {
 #[derive(Clone, Debug)]
 pub struct City {
     id: usize,
-    width: u32,
-    height: u32,
+    width: usize,
+    height: usize,
     roads: Vec<Road>,
 }
 
 use network::Edge;
 
 impl City {
-    pub fn new(width: u32, height: u32) -> City {
+    pub fn new(width: usize, height: usize) -> City {
         City{ id: 0, width, height, roads: vec![] }
     }
 
@@ -79,9 +79,9 @@ impl City {
         City::new(1024, 1024)
     }
 
-    pub fn with_all_roads(width: u32, height: u32) -> City {
+    pub fn with_all_roads(width: usize, height: usize) -> City {
 
-        let mut roads = Vec::with_capacity((width * height * 12) as usize);
+        let mut roads = Vec::with_capacity((width * height * 12));
 
         for exit in DIRECTIONS.iter() {
             for (_, entry) in DIRECTIONS.iter().enumerate().filter(|&(i, _)| *exit != DIRECTIONS[(i + 2) % 4]) {
@@ -107,9 +107,9 @@ impl City {
         }
     }
 
-    pub fn get_index(&self, &Cell{ref x, ref y, ref d}: &Cell) -> u32 {
+    pub fn get_index(&self, &Cell{ref x, ref y, ref d}: &Cell) -> usize {
 
-        fn get_direction_index(d: &Direction) -> u32 {
+        fn get_direction_index(d: &Direction) -> usize {
             match d {
                 &Direction::North => 0,
                 &Direction::East => 1,
@@ -121,15 +121,15 @@ impl City {
         x + (y * self.width) + (get_direction_index(d) * self.width * self.height)
     }
 
-    pub fn get_cell(&self, index: u32) -> Cell {
+    pub fn get_cell(&self, index: usize) -> Cell {
         let d = index / (self.width * self.height);
         let r = index % (self.width * self.height);
         let y = r / self.width;
         let x = r % self.width;
-        Cell::new(x, y, DIRECTIONS[d as usize])
+        Cell::new(x, y, DIRECTIONS[d])
     }
 
-    pub fn get_num_nodes(&self) -> u32 {
+    pub fn get_num_nodes(&self) -> usize {
 		self.width * self.height * 4
 	}
 
@@ -189,7 +189,7 @@ mod tests {
     fn test_get_index_get_cell() {
         let city = City::new(5, 3);
 
-        let mut cells = Vec::with_capacity((city.width * city.height * 4) as usize);
+        let mut cells = Vec::with_capacity((city.width * city.height * 4));
 
         for d in DIRECTIONS.iter() {
             for y in 0..city.height {
@@ -200,8 +200,8 @@ mod tests {
         }
 
         for (index, cell) in cells.iter().enumerate() {
-            assert!(city.get_index(&cell) == index as u32);
-            assert!(city.get_cell(index as u32) == *cell);
+            assert!(city.get_index(&cell) == index);
+            assert!(city.get_cell(index) == *cell);
         }
     }
 

@@ -3,14 +3,14 @@ extern crate num;
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Edge {
-    pub from: u32,
-    pub to: u32,
+    pub from: usize,
+    pub to: usize,
     pub cost: u8,
 }
 
 impl Edge {
 
-    pub fn new(from: u32, to: u32, cost: u8) -> Edge {
+    pub fn new(from: usize, to: usize, cost: u8) -> Edge {
         Edge {
             from,
             to,
@@ -25,15 +25,15 @@ impl Edge {
         vec![(1, 0), (1, 1), (0, 1)]
     }
 
-    pub fn create_grid(width: u32, height: u32, cost: u8, neighbour_deltas: Vec<(u8, u8)>) -> Vec<Edge> {
+    pub fn create_grid(width: usize, height: usize, cost: u8, neighbour_deltas: Vec<(usize, usize)>) -> Vec<Edge> {
 
-        fn get_index(x: u32, y: u32, width: u32) -> u32 {
+        fn get_index(x: usize, y: usize, width: usize) -> usize {
             (y * width) + x
         }
 
-        fn create_edge(x: u32, y: u32, width: u32, height: u32, delta: &(u8, u8), cost: u8) -> Vec<Edge> {
-            let x_b = x + delta.0 as u32;
-            let y_b = y + delta.1 as u32;
+        fn create_edge(x: usize, y: usize, width: usize, height: usize, delta: &(usize, usize), cost: u8) -> Vec<Edge> {
+            let x_b = x + delta.0;
+            let y_b = y + delta.1;
             if (x_b >= width) || (y_b >= height) {
                 return vec![]
             }
@@ -53,19 +53,19 @@ impl Edge {
 }
 
 pub struct Network {
-    pub nodes: u32,
+    pub nodes: usize,
     edges_out: Vec<Vec<Edge>>,
     edges_in: Vec<Vec<Edge>>,
 }
 
 impl Network {
 
-    pub fn new(nodes: u32, edges: &Vec<Edge>) -> Network {
+    pub fn new(nodes: usize, edges: &Vec<Edge>) -> Network {
 
         let mut out = Network {
            nodes,
-           edges_out: Vec::with_capacity(nodes as usize),
-           edges_in: Vec::with_capacity(nodes as usize),
+           edges_out: Vec::with_capacity(nodes),
+           edges_in: Vec::with_capacity(nodes),
         };
 
         out.calculate_all_edges_in_and_out(edges);
@@ -74,33 +74,33 @@ impl Network {
     }
 
     fn calculate_all_edges_in_and_out(&mut self, edges: &Vec<Edge>) {
-        self.edges_out = Vec::with_capacity(self.nodes as usize);
-        self.edges_in = Vec::with_capacity(self.nodes as usize);
+        self.edges_out = Vec::with_capacity(self.nodes);
+        self.edges_in = Vec::with_capacity(self.nodes);
         for _ in 0..self.nodes {
             self.edges_out.push(vec![]);
             self.edges_in.push(vec![]);
         }
         for edge in edges {
-            self.edges_out.get_mut(edge.from as usize).unwrap().push(edge.clone());
-            self.edges_in.get_mut(edge.to as usize).unwrap().push(edge.clone());
+            self.edges_out.get_mut(edge.from).unwrap().push(edge.clone());
+            self.edges_in.get_mut(edge.to).unwrap().push(edge.clone());
         }
     }
 
-    pub fn get_in(&self, node: u32) -> &Vec<Edge> {
-        &self.edges_in[node as usize]
+    pub fn get_in(&self, node: usize) -> &Vec<Edge> {
+        &self.edges_in[node]
     }
 
-    pub fn get_out(&self, node: u32) -> &Vec<Edge> {
-        &self.edges_out[node as usize]
+    pub fn get_out(&self, node: usize) -> &Vec<Edge> {
+        &self.edges_out[node]
     }
 
-    pub fn dijkstra(&self, node: u32) -> Vec<Option<u32>> {
+    pub fn dijkstra(&self, node: usize) -> Vec<Option<u32>> {
         use std::collections::BinaryHeap;
         use std::cmp::Ordering;
 
         #[derive(Eq)]
         struct Node {
-            index: u32,
+            index: usize,
             cost: u32,
         }
 
@@ -122,19 +122,19 @@ impl Network {
             }
         }
 
-        let mut closed: Vec<bool> = vec![false; self.nodes as usize];
-        let mut out: Vec<Option<u32>> = vec![None; self.nodes as usize];
+        let mut closed: Vec<bool> = vec![false; self.nodes];
+        let mut out: Vec<Option<u32>> = vec![None; self.nodes];
         let mut heap = BinaryHeap::new();
 
         heap.push(Node{ index: node, cost: 0 });
 
         while let Some(Node {index, cost}) = heap.pop() {
-            if !closed[index as usize] {
-                closed[index as usize] = true;
-                out[index as usize] = Some(cost);
+            if !closed[index] {
+                closed[index] = true;
+                out[index] = Some(cost);
 
                 for edge in self.get_in(index) {
-                    if !closed[edge.from as usize] {
+                    if !closed[edge.from] {
                         heap.push(Node{ index: edge.from, cost: cost + edge.cost as u32 });
                     }
                 }
@@ -165,14 +165,13 @@ mod tests {
             Edge::new(7, 7, 10)]
     }
 
-    fn get_test_network(nodes: u32, edges: &Vec<Edge>) -> Network {
-        Network::new(nodes, edges)
+    fn get_test_network() -> Network {
+        Network::new(8, &get_test_edges())
     }
 
     #[test]
     fn test_get_out() {
-        let edges = get_test_edges();
-        let network = get_test_network(8, &edges);
+        let network = get_test_network();
         assert_that!(network.get_out(0), contains(vec![&edges[0], &edges[1], &edges[2]]).exactly());
         assert_that!(network.get_out(1), contains(vec![&edges[3]]).exactly());
         assert_that!(network.get_out(2), contains(vec![&edges[4], &edges[5]]).exactly());
@@ -185,8 +184,7 @@ mod tests {
 
     #[test]
     fn test_get_in() {
-        let edges = get_test_edges();
-        let network = get_test_network(8, &edges);
+        let network = get_test_network();
         assert_that!(network.get_in(0).len(), is(equal_to(0)));
         assert_that!(network.get_in(1), contains(vec![&edges[0]]).exactly());
         assert_that!(network.get_in(2), contains(vec![&edges[1], &edges[2]]).exactly());
@@ -232,8 +230,7 @@ mod tests {
 
     #[test]
     fn test_dijkstra() {
-        let edges = get_test_edges();
-        let network = get_test_network(8, &edges);
+        let network = get_test_network();
         let expected = vec![
             vec![Some(0), None, None, None, None, None, None, None],
             vec![Some(1), Some(0), None, None, None, None, None, None],
@@ -246,7 +243,7 @@ mod tests {
         ];
         
         for i in 0..8 {
-            assert_that!(&network.dijkstra(i as u32), is(equal_to(&expected[i])));
+            assert_that!(&network.dijkstra(i), is(equal_to(&expected[i])));
         }
     }
 }
