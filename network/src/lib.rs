@@ -1,7 +1,7 @@
 extern crate num;
 #[cfg(test)] #[macro_use] extern crate hamcrest;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Edge {
     pub from: u32,
     pub to: u32,
@@ -52,47 +52,45 @@ impl Edge {
 
 }
 
-pub struct Network<'a> {
+pub struct Network {
     pub nodes: u32,
-    pub edges: &'a Vec<Edge>,
-    edges_out: Vec<Vec<&'a Edge>>,
-    edges_in: Vec<Vec<&'a Edge>>,
+    edges_out: Vec<Vec<Edge>>,
+    edges_in: Vec<Vec<Edge>>,
 }
 
-impl <'a> Network<'a> {
+impl Network {
 
-    pub fn new(nodes: u32, edges: &'a Vec<Edge>) -> Network<'a> {
+    pub fn new(nodes: u32, edges: &Vec<Edge>) -> Network {
 
         let mut out = Network {
            nodes,
-           edges,
            edges_out: Vec::with_capacity(nodes as usize),
            edges_in: Vec::with_capacity(nodes as usize),
         };
 
-        out.calculate_all_edges_in_and_out();
+        out.calculate_all_edges_in_and_out(edges);
 
         out
     }
 
-    fn calculate_all_edges_in_and_out(&mut self) {
+    fn calculate_all_edges_in_and_out(&mut self, edges: &Vec<Edge>) {
         self.edges_out = Vec::with_capacity(self.nodes as usize);
         self.edges_in = Vec::with_capacity(self.nodes as usize);
         for _ in 0..self.nodes {
             self.edges_out.push(vec![]);
             self.edges_in.push(vec![]);
         }
-        for edge in self.edges {
-            self.edges_out.get_mut(edge.from as usize).unwrap().push(edge);
-            self.edges_in.get_mut(edge.to as usize).unwrap().push(edge);
+        for edge in edges {
+            self.edges_out.get_mut(edge.from as usize).unwrap().push(edge.clone());
+            self.edges_in.get_mut(edge.to as usize).unwrap().push(edge.clone());
         }
     }
 
-    pub fn get_in(&self, node: u32) -> &Vec<&'a Edge> {
+    pub fn get_in(&self, node: u32) -> &Vec<Edge> {
         &self.edges_in[node as usize]
     }
 
-    pub fn get_out(&self, node: u32) -> &Vec<&'a Edge> {
+    pub fn get_out(&self, node: u32) -> &Vec<Edge> {
         &self.edges_out[node as usize]
     }
 
