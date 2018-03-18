@@ -14,7 +14,9 @@ impl Editor {
     }
 
     pub fn run(&mut self) {
-        let mut city = City::from("another city");
+        let sources = vec![];
+        let destinations = vec![];
+        let mut city = City::from("another city", sources, destinations);
         city.id = 1;
 
         self.city_publisher.publish(&city);

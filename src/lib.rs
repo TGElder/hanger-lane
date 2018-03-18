@@ -66,20 +66,22 @@ pub struct City {
     width: usize,
     height: usize,
     roads: Vec<Road>,
+    sources: Vec<Cell>,
+    destinations: Vec<Cell>,
 }
 
 use network::Edge;
 
 impl City {
-    pub fn new(width: usize, height: usize) -> City {
-        City{ id: 0, width, height, roads: vec![] }
+    pub fn new(width: usize, height: usize, sources: Vec<Cell>, destinations: Vec<Cell>) -> City {
+        City{ id: 0, width, height, roads: vec![], sources, destinations }
     }
 
-    pub fn from(_: &str) -> City {
-        City::new(1024, 1024)
+    pub fn from(_: &str, sources: Vec<Cell>, destinations: Vec<Cell>) -> City {
+        City::new(1024, 1024, sources, destinations)
     }
 
-    pub fn with_all_roads(width: usize, height: usize) -> City {
+    pub fn with_all_roads(width: usize, height: usize, sources: Vec<Cell>, destinations: Vec<Cell>) -> City {
 
         let mut roads = Vec::with_capacity((width * height * 12));
 
@@ -93,7 +95,7 @@ impl City {
             }
         }
 
-        City { id: 0, width, height, roads }
+        City { id: 0, width, height, roads, sources, destinations }
     }
 
     fn forward(&self, &Cell{ref x, ref y, ref d}: &Cell) -> Option<Cell> {
@@ -145,23 +147,15 @@ impl City {
 }
 
 #[derive(Clone, Debug)]
-pub struct Traffic {
-    id: usize,
-    vehicles: Vec<Cell>,
+pub struct Vehicle {
+    location: Cell,
+    destination: usize,
 }
 
-impl Traffic {
-    fn new(size: usize) -> Traffic {
-        let mut rng = rand::thread_rng();
-
-        Traffic{
-            id: 0,
-            vehicles: (0..size).map(|_| Cell{
-                x: rng.gen_range(0, 512),
-                y: rng.gen_range(0, 512),
-                d: DIRECTIONS[rng.gen_range(0, 4)],
-            }).collect() }
-    }
+#[derive(Clone, Debug)]
+pub struct Traffic {
+    id: usize,
+    vehicles: Vec<Vehicle>,
 }
 
 #[cfg(test)]

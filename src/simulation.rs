@@ -3,7 +3,7 @@ extern crate network;
 
 use std::sync::{Arc, RwLock};
 use version::{Version, Publisher, Local};
-use super::{City, Traffic, Cell, Direction};
+use super::{City, Vehicle, Traffic, Cell, Direction};
 use network::Network;
 use rand::{Rng, ThreadRng};
 
@@ -14,11 +14,11 @@ struct Occupancy {
 
 impl Occupancy {
 
-    fn new(city: &City, vehicles: &Vec<Cell>) -> Occupancy {
+    fn new(city: &City, vehicles: &Vec<Vehicle>) -> Occupancy {
         let occupancy = vec![vec![false; city.width as usize]; city.height as usize];
         let mut out = Occupancy{ occupancy };
         for vehicle in vehicles.iter() {
-            out.occupy(vehicle);
+            out.occupy(&vehicle.location);
         }
         out
     }
@@ -52,7 +52,7 @@ pub struct Simulation {
     target: Cell,
     city: Arc<City>,
     network: Network,
-    costs: Vec<Option<u32>>,
+    costs: Vec<Vec<Option<u32>>>,
 }
 
 impl Simulation {
@@ -61,7 +61,10 @@ impl Simulation {
         let target = Cell{x: 256, y: 256, d: Direction::East};
         let city = Arc::clone(city);
         let network = Network::new(city.get_num_nodes(), &city.create_edges());
-        let costs = network.dijkstra(city.get_index(&target));
+        let mut costs = Vec::with_capacity(city.destinations.len());
+        for destination in city.destinations.iter() {
+            costs.push(network.dijkstra(city.get_index(&destination)));
+        }
 
         Simulation{ target, city, network, costs }
     }
@@ -72,20 +75,22 @@ impl Simulation {
         let mut occupancy = state.occupancy;
         let mut rng = state.rng;
 
+        traffic.vehicles.append(&mut self.get_new_vehicles(&occupancy, &mut rng));
         for vehicle in traffic.vehicles.iter_mut() {
-            if let Some(next_position) = self.get_next_position(&vehicle, &occupancy, &mut rng) {
-                occupancy.free(vehicle);
-                if next_position != self.target {
-                    occupancy.occupy(&next_position);
-                }
-                *vehicle = next_position;
+            if let Some(next_location) = self.get_next_location(&vehicle, &occupancy, &mut rng) {
+                occupancy.free(&vehicle.location);
+                occupancy.occupy(&next_location);
+                vehicle.location = next_location;
             }
         }
+        traffic.vehicles = self.remove_vehicles(&mut traffic.vehicles, &mut occupancy);
+
         SimulationState{ traffic, occupancy, rng }
     }
 
-    fn get_next_position(&self, vehicle: &Cell, occupancy: &Occupancy, rng: &mut ThreadRng) -> Option<Cell> {
-        let node = self.city.get_index(vehicle);
+    fn get_next_location(&self, vehicle: &Vehicle, occupancy: &Occupancy, rng: &mut ThreadRng) -> Option<Cell> {
+        let costs = self.costs.get(vehicle.destination).unwrap();
+        let node = self.city.get_index(&vehicle.location);
         let neighbours: Vec<usize> = self.network.get_out(node).iter().map(|e| e.to).collect();
         let free_neighbours: Vec<usize> = neighbours.iter().cloned()
             .filter(|n| {
@@ -93,13 +98,13 @@ impl Simulation {
                 occupancy.is_free(cell.x, cell.y)
             }).collect();
         let lowest_cost = free_neighbours.iter()
-            .map(|n| self.costs.get(*n))
+            .map(|n| costs.get(*n))
             .min();
         match lowest_cost {
-            Some(lowest_cost) if lowest_cost < self.costs.get(node) => {
+            Some(lowest_cost) if lowest_cost < costs.get(node) => {
                 // Get some neighbour with lowest cost
                 let candidates: Vec<usize> = free_neighbours.iter().cloned()
-                    .filter(|n| self.costs.get(*n) == lowest_cost)
+                    .filter(|n| costs.get(*n) == lowest_cost)
                     .collect();
                 let selected = rng.choose(&candidates).unwrap();
 
@@ -107,6 +112,29 @@ impl Simulation {
             },
             _ => None
         }
+    }
+
+    fn get_new_vehicles(&self, occupancy: &Occupancy, rng: &mut ThreadRng) -> Vec<Vehicle> {
+        let mut out = Vec::with_capacity(self.city.sources.len());
+        for source in self.city.sources.iter() {
+            if (occupancy.is_free(source.x, source.y)) {
+                out.push(Vehicle{ location: source.clone(), destination: rng.gen_range(0, self.city.destinations.len()) });
+            }
+        }
+        out
+    }
+
+    fn remove_vehicles(&self, vehicles: &mut Vec<Vehicle>, occupancy: &mut Occupancy) -> Vec<Vehicle> {
+        let mut out = vec![];
+        for vehicle in vehicles {
+            if vehicle.location != *self.city.destinations.get(vehicle.destination).unwrap() {
+                out.push(vehicle.clone());
+            }
+            else {
+                occupancy.free(&vehicle.location);
+            }
+        }
+        out
     }
 
 
@@ -151,12 +179,12 @@ impl Simulator {
 
                 println!("Setting up sim");
                 let sim = Simulation::new(city);
-                let traffic = Traffic::new(65536);
+                let traffic = Traffic{ id: 0, vehicles: vec![] };
                 let occupancy = Occupancy::new(city, &traffic.vehicles);
                 let mut state = SimulationState{ traffic, occupancy, rng: rand::thread_rng()  };
 
-                println!("Stepping");
                 while *self.running.read().unwrap() {
+                    println!("Stepping");
                     state = sim.step(state);
                     self.traffic_publisher.publish(&state.traffic);
                 }
