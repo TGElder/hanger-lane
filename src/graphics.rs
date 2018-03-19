@@ -4,7 +4,7 @@ extern crate glutin_window;
 extern crate opengl_graphics;
 
 use version::{Version, Local};
-use super::{Cell, City, Vehicle, Traffic};
+use super::{City, Vehicle, Traffic};
 use self::piston::window::WindowSettings;
 use self::piston::event_loop::*;
 use self::piston::input::*;

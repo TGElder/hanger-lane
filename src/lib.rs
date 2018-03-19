@@ -8,8 +8,6 @@ mod graphics;
 mod editor;
 pub mod ui;
 
-use rand::Rng;
-
 const DIRECTIONS: [Direction; 4] = [Direction::North, Direction::East, Direction::South, Direction::West];
 
 #[derive(Clone, Copy, Debug, PartialEq)]

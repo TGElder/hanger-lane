@@ -20,7 +20,7 @@ impl UI {
         let mut sources = vec![];
         let mut destinations = vec![];
 
-        for _ in 0..1 {
+        for _ in 0..64 {
             sources.push(get_random_cell(&mut rng));
         }
 
@@ -47,14 +47,14 @@ impl UI {
         });
 
         thread::spawn(move || {
-            thread::sleep(Duration::from_secs(1));
+            //thread::sleep(Duration::from_secs(1));
             *sim_run.write().unwrap() = true;
 
-            thread::sleep(Duration::from_secs(60));
-            editor.run();
+            //thread::sleep(Duration::from_secs(60));
+            //editor.run();
 
-            thread::sleep(Duration::from_secs(1));
-            *sim_run.write().unwrap() = false;
+            //thread::sleep(Duration::from_secs(1));
+            //*sim_run.write().unwrap() = false;
         });
 
         // Window needs to be created in main thread
