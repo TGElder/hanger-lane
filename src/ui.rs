@@ -60,7 +60,6 @@ impl UI {
         *sim_run.write().unwrap() = false;
         *sim_shutdown.write().unwrap() = true;
         sim_handle.join().unwrap();
-
     }
 }
 
@@ -145,24 +144,53 @@ pub struct MoveVehicle {
     costs: Vec<Vec<Option<u32>>>,
 }
 
+impl MoveVehicle {
+
+    fn extend(&self, path: Vec<usize>, occupancy: &Occupancy) -> Vec<Vec<usize>> {
+        let neighbours: Vec<usize> = self.network.get_out(*path.last().unwrap()).iter().map(|n| n.to).collect();
+        let free_neighbours: Vec<usize> = neighbours.iter().cloned()
+            .filter(|n| {
+                let cell = self.city.get_cell(*n);
+                occupancy.is_free(cell.x, cell.y) && !path.contains(n)
+            }).collect();
+        let mut out = vec![];
+        for neighbour in free_neighbours {
+            let mut neighbour_path = path.clone();
+            neighbour_path.push(neighbour);
+            out.push(neighbour_path);
+        }
+        out
+    }
+
+    fn extend_all(&self, paths: Vec<Vec<usize>>, occupancy: &Occupancy) -> Vec<Vec<usize>> {
+        let mut paths_out = vec![];
+        for path in paths {
+            paths_out.append(&mut self.extend(path, occupancy));
+        }
+        paths_out
+    }
+
+}
+
 impl VehicleUpdate for MoveVehicle {
     fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, rng: &mut ThreadRng) {
         let costs = self.costs.get(vehicle.destination).unwrap();
         let node = self.city.get_index(&vehicle.location);
-        let neighbours: Vec<usize> = self.network.get_out(node).iter().flat_map(|e| self.network.get_out(e.to)).flat_map(|e| self.network.get_out(e.to)).map(|e| e.to).collect();
-        let free_neighbours: Vec<usize> = neighbours.iter().cloned()
-            .filter(|n| {
-                let cell = self.city.get_cell(*n);
-                occupancy.is_free(cell.x, cell.y)
-            }).collect();
-        let lowest_cost = free_neighbours.iter()
-            .map(|n| costs.get(*n))
+        let paths = vec![vec![node]];
+        let paths = self.extend_all(paths, &occupancy);
+        let paths = self.extend_all(paths, &occupancy);
+        let paths = self.extend_all(paths, &occupancy);
+        let paths = self.extend_all(paths, &occupancy);
+
+        let lowest_cost = paths.iter()
+            .map(|p| costs.get(*p.last().unwrap()))
             .min();
         if let Some(lowest_cost) = lowest_cost {
             if lowest_cost < costs.get(node) {
                 // Get some neighbour with lowest cost
-                let candidates: Vec<usize> = free_neighbours.iter().cloned()
-                    .filter(|n| costs.get(*n) == lowest_cost)
+                let candidates: Vec<usize> = paths.iter().cloned()
+                    .filter(|p| costs.get(*p.last().unwrap()) == lowest_cost)
+                    .map(|p| *p.get(1).unwrap())
                     .collect();
                 let selected = rng.choose(&candidates).unwrap();
 
@@ -170,6 +198,7 @@ impl VehicleUpdate for MoveVehicle {
             }
         }
     }
+    
 }
 
 pub struct VehicleFree {
