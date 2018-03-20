@@ -146,7 +146,7 @@ pub struct MoveVehicle {
 
 impl MoveVehicle {
 
-    fn extend(&self, path: Vec<usize>, occupancy: &Occupancy) -> Vec<Vec<usize>> {
+    fn extend(&self, path: &Vec<usize>, occupancy: &Occupancy) -> Vec<Vec<usize>> {
         let neighbours: Vec<usize> = self.network.get_out(*path.last().unwrap()).iter().map(|n| n.to).collect();
         let free_neighbours: Vec<usize> = neighbours.iter().cloned()
             .filter(|n| {
@@ -162,7 +162,7 @@ impl MoveVehicle {
         out
     }
 
-    fn extend_all(&self, paths: Vec<Vec<usize>>, occupancy: &Occupancy) -> Vec<Vec<usize>> {
+    fn extend_all(&self, paths: &Vec<Vec<usize>>, occupancy: &Occupancy) -> Vec<Vec<usize>> {
         let mut paths_out = vec![];
         for path in paths {
             paths_out.append(&mut self.extend(path, occupancy));
@@ -176,11 +176,15 @@ impl VehicleUpdate for MoveVehicle {
     fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, rng: &mut ThreadRng) {
         let costs = self.costs.get(vehicle.destination).unwrap();
         let node = self.city.get_index(&vehicle.location);
-        let paths = vec![vec![node]];
-        let paths = self.extend_all(paths, &occupancy);
-        let paths = self.extend_all(paths, &occupancy);
-        let paths = self.extend_all(paths, &occupancy);
-        let paths = self.extend_all(paths, &occupancy);
+        let mut paths_0 = vec![vec![node]];
+        let mut paths_1 = self.extend_all(&paths_0, &occupancy);
+        let mut paths_2 = self.extend_all(&paths_1, &occupancy);
+        let mut paths_3 = self.extend_all(&paths_2, &occupancy);
+        let mut paths = vec![];
+        paths.append(&mut paths_0);
+        paths.append(&mut paths_1);
+        paths.append(&mut paths_2);
+        paths.append(&mut paths_3);
 
         let lowest_cost = paths.iter()
             .map(|p| costs.get(*p.last().unwrap()))
