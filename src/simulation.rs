@@ -2,10 +2,9 @@ extern crate rand;
 extern crate network;
 
 use std::sync::{Arc, RwLock};
-use version::{Version, Publisher, Local};
+use version::{Version, Publisher};
 use super::{City, Vehicle, Traffic, Cell};
-use network::Network;
-use rand::{Rng, ThreadRng};
+use rand::ThreadRng;
 
 #[derive(Clone)]
 pub struct Occupancy {

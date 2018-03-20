@@ -5,7 +5,6 @@ extern crate network;
 mod version;
 mod simulation;
 mod graphics;
-mod editor;
 pub mod ui;
 
 const DIRECTIONS: [Direction; 4] = [Direction::North, Direction::East, Direction::South, Direction::West];

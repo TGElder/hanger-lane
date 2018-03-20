@@ -3,14 +3,12 @@ extern crate network;
 
 use std::thread;
 use std::sync::{Arc, RwLock};
-use std::time::Duration;
 use version::Publisher;
 use simulation::Simulator;
 use super::{Cell, City, Vehicle, Traffic, DIRECTIONS};
 use graphics::Graphics;
-use editor::Editor;
-use rand::{Rng, ThreadRng};
 use network::Network;
+use rand::{Rng, ThreadRng};
 use simulation::*;
 
 pub struct UI {
