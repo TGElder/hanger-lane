@@ -47,11 +47,9 @@ impl UI {
         let sim_run_2 = Arc::clone(&sim_run);
         let sim_shutdown_2 = Arc::clone(&sim_shutdown);
         let sim_handle = thread::spawn(move || {
-            let traffic = Traffic{ id: 0, vehicles: vec![] };
-            let occupancy = Occupancy::new(&city, &traffic.vehicles);
-            let mut state = SimulationState{ traffic, occupancy, rng: rand::thread_rng()  };
-            let mut sim = Simulator::new(setup_simulation(&Arc::new(city)), &traffic_version, sim_run_2, sim_shutdown_2);
-            sim.run(state);
+            let city_arc = Arc::new(city);
+            let mut sim = Simulator::new(setup_simulation(&city_arc), &traffic_version, sim_run_2, sim_shutdown_2);
+            sim.run(setup_simulation_state(&city_arc));
         });
 
         *sim_run.write().unwrap() = true;
@@ -64,6 +62,12 @@ impl UI {
         sim_handle.join().unwrap();
 
     }
+}
+
+fn setup_simulation_state(city: &Arc<City>) -> SimulationState {
+    let traffic = Traffic{ id: 0, vehicles: vec![] };
+    let occupancy = Occupancy::new(&city, &traffic.vehicles);
+    SimulationState{ traffic, occupancy, rng: rand::thread_rng() }
 }
 
 fn setup_simulation(city: &Arc<City>) -> Simulation {
