@@ -1,13 +1,17 @@
 extern crate rand; 
+extern crate network;
+
 use std::thread;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use version::Publisher;
 use simulation::Simulator;
-use super::{Cell, City, DIRECTIONS};
+use super::{Cell, City, Vehicle, Traffic, DIRECTIONS};
 use graphics::Graphics;
 use editor::Editor;
 use rand::{Rng, ThreadRng};
+use network::Network;
+use simulation::*;
 
 pub struct UI {
 }
@@ -34,36 +38,53 @@ impl UI {
         let mut city_publisher = Publisher::new(&city_version);
         city_publisher.publish(&city);
 
-        let traffic = Arc::new(RwLock::new(None));
+        let traffic_version = Arc::new(RwLock::new(None));
 
         let sim_run = Arc::new(RwLock::new(true));
         let sim_shutdown = Arc::new(RwLock::new(false));
-        let mut sim = Simulator::new(&city_version, &traffic, Arc::clone(&sim_run), Arc::clone(&sim_shutdown));
-        let mut graphics = Graphics::new(&city_version, &traffic, "Hanger Lane", 1024, 1024);
-        let mut editor = Editor::new(&city_version);
+        let mut graphics = Graphics::new(&city_version, &traffic_version, "Hanger Lane", 1024, 1024);
 
+        let sim_run_2 = Arc::clone(&sim_run);
+        let sim_shutdown_2 = Arc::clone(&sim_shutdown);
         let sim_handle = thread::spawn(move || {
-            sim.run();
+            let traffic = Traffic{ id: 0, vehicles: vec![] };
+            let occupancy = Occupancy::new(&city, &traffic.vehicles);
+            let mut state = SimulationState{ traffic, occupancy, rng: rand::thread_rng()  };
+            let mut sim = Simulator::new(setup_simulation(&Arc::new(city)), &traffic_version, sim_run_2, sim_shutdown_2);
+            sim.run(state);
         });
 
-        thread::spawn(move || {
-            //thread::sleep(Duration::from_secs(1));
-            *sim_run.write().unwrap() = true;
-
-            //thread::sleep(Duration::from_secs(60));
-            //editor.run();
-
-            //thread::sleep(Duration::from_secs(1));
-            //*sim_run.write().unwrap() = false;
-        });
+        *sim_run.write().unwrap() = true;
 
         // Window needs to be created in main thread
         graphics.run();
 
+        *sim_run.write().unwrap() = false;
         *sim_shutdown.write().unwrap() = true;
         sim_handle.join().unwrap();
 
     }
+}
+
+fn setup_simulation(city: &Arc<City>) -> Simulation {
+    let network = Network::new(city.get_num_nodes(), &city.create_edges());
+    let mut costs = Vec::with_capacity(city.destinations.len());
+    for destination in city.destinations.iter() {
+        costs.push(network.dijkstra(city.get_index(&destination)));
+    }
+    let add_vehicles = Box::new(SpawnVehicles{city: Arc::clone(&city)});
+    let vehicle_updates: Vec<Box<VehicleUpdate>> = vec![
+        Box::new(VehicleFree{}),
+        Box::new(MoveVehicle{
+            city: Arc::clone(city),
+            network,
+            costs}),
+        Box::new(VehicleOccupy{city: Arc::clone(city)}),
+    ];
+    let update_vehicles = Box::new(UpdateVehicles{updates: vehicle_updates});
+    let remove_vehicles = Box::new(RemoveVehicles{city: Arc::clone(city)});
+
+    Simulation{ steps: vec![add_vehicles, update_vehicles, remove_vehicles] }
 }
 
 fn get_random_cell(rng: &mut ThreadRng) -> Cell {
@@ -71,6 +92,100 @@ fn get_random_cell(rng: &mut ThreadRng) -> Cell {
         x: rng.gen_range(0, 512),
         y: rng.gen_range(0, 512),
         d: DIRECTIONS[rng.gen_range(0, 4)],
+    }
+}
+
+pub struct SpawnVehicles {
+    city: Arc<City>,
+}
+
+impl SimulationStep for SpawnVehicles {
+    fn step(&self, state: SimulationState) -> SimulationState {
+        let mut traffic = state.traffic;
+        let mut rng = state.rng;
+        for source in self.city.sources.iter() {
+            if state.occupancy.is_free(source.x, source.y) {
+                traffic.vehicles.push(Vehicle{ location: source.clone(), destination: rng.gen_range(0, self.city.destinations.len()) });
+            }
+        }
+        SimulationState{traffic, rng, ..state}
+    }
+}
+
+pub struct RemoveVehicles {
+    city: Arc<City>,
+}
+
+impl SimulationStep for RemoveVehicles {
+    fn step(&self, state: SimulationState) -> SimulationState {
+        let mut traffic = state.traffic;
+        let mut occupancy = state.occupancy;
+        let mut rng = state.rng;
+        let mut vehicles_next = vec![];
+        for vehicle in traffic.vehicles {
+            if rng.gen_range(0, 400) != 0 && vehicle.location != *self.city.destinations.get(vehicle.destination).unwrap() {
+                vehicles_next.push(vehicle.clone());
+            }
+            else {
+                occupancy.free(&vehicle.location);
+            }
+        }
+        traffic.vehicles = vehicles_next;
+        SimulationState{traffic, occupancy, rng}
+    }
+}
+
+pub struct MoveVehicle {
+    city: Arc<City>,
+    network: Network,
+    costs: Vec<Vec<Option<u32>>>,
+}
+
+impl VehicleUpdate for MoveVehicle {
+    fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, rng: &mut ThreadRng) {
+        let costs = self.costs.get(vehicle.destination).unwrap();
+        let node = self.city.get_index(&vehicle.location);
+        let neighbours: Vec<usize> = self.network.get_out(node).iter().flat_map(|e| self.network.get_out(e.to)).flat_map(|e| self.network.get_out(e.to)).map(|e| e.to).collect();
+        let free_neighbours: Vec<usize> = neighbours.iter().cloned()
+            .filter(|n| {
+                let cell = self.city.get_cell(*n);
+                occupancy.is_free(cell.x, cell.y)
+            }).collect();
+        let lowest_cost = free_neighbours.iter()
+            .map(|n| costs.get(*n))
+            .min();
+        if let Some(lowest_cost) = lowest_cost {
+            if lowest_cost < costs.get(node) {
+                // Get some neighbour with lowest cost
+                let candidates: Vec<usize> = free_neighbours.iter().cloned()
+                    .filter(|n| costs.get(*n) == lowest_cost)
+                    .collect();
+                let selected = rng.choose(&candidates).unwrap();
+
+                vehicle.location = self.city.get_cell(*selected);
+            }
+        }
+    }
+}
+
+pub struct VehicleFree {
+}
+
+impl VehicleUpdate for VehicleFree {
+    fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, _rng: &mut ThreadRng) {
+        occupancy.free(&vehicle.location);
+    }
+}
+
+pub struct VehicleOccupy {
+    city: Arc<City>,
+}
+
+impl VehicleUpdate for VehicleOccupy {
+    fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, _rng: &mut ThreadRng) {
+        if &vehicle.location != self.city.destinations.get(vehicle.destination).unwrap() {
+            occupancy.occupy(&vehicle.location);
+        }
     }
 }
 
