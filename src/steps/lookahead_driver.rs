@@ -76,11 +76,14 @@ impl VehicleUpdate for LookaheadDriver {
     
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
+
+    use network::Edge;
 
     #[test]
     fn test_a() {
+        let test_edges = Edge::create_grid(2, 4, 1, Edge::create_4_neighbour_deltas());
         assert!(true);
     }
 

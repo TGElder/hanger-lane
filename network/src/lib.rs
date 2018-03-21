@@ -17,11 +17,11 @@ impl Edge {
             cost }
     }
 
-    pub fn create_4_neighbour_deltas() -> Vec<(u8, u8)> {
+    pub fn create_4_neighbour_deltas() -> Vec<(usize, usize)> {
         vec![(1, 0), (0, 1)]
     }
     
-    pub fn create_8_neighbour_deltas() -> Vec<(u8, u8)> {
+    pub fn create_8_neighbour_deltas() -> Vec<(usize, usize)> {
         vec![(1, 0), (1, 1), (0, 1)]
     }
 
@@ -165,34 +165,36 @@ mod tests {
             Edge::new(7, 7, 10)]
     }
 
-    fn get_test_network() -> Network {
-        Network::new(8, &get_test_edges())
+    fn get_test_network(edges: &Vec<Edge>) -> Network {
+        Network::new(8, edges)
     }
 
     #[test]
     fn test_get_out() {
-        let network = get_test_network();
-        assert_that!(network.get_out(0), contains(vec![&edges[0], &edges[1], &edges[2]]).exactly());
-        assert_that!(network.get_out(1), contains(vec![&edges[3]]).exactly());
-        assert_that!(network.get_out(2), contains(vec![&edges[4], &edges[5]]).exactly());
+        let edges = get_test_edges();
+        let network = get_test_network(&edges);
+        assert_that!(&network.get_out(0).iter().collect(), contains(vec![&edges[0], &edges[1], &edges[2]]).exactly());
+        assert_that!(&network.get_out(1).iter().collect(), contains(vec![&edges[3]]).exactly());
+        assert_that!(&network.get_out(2).iter().collect(), contains(vec![&edges[4], &edges[5]]).exactly());
         assert_that!(network.get_out(3).len(), is(equal_to(0)));
         assert_that!(network.get_out(4).len(), is(equal_to(0)));
-        assert_that!(network.get_out(5), contains(vec![&edges[6]]).exactly());
-        assert_that!(network.get_out(6), contains(vec![&edges[7], &edges[8]]).exactly());
-        assert_that!(network.get_out(7), contains(vec![&edges[9]]).exactly());
+        assert_that!(&network.get_out(5).iter().collect(), contains(vec![&edges[6]]).exactly());
+        assert_that!(&network.get_out(6).iter().collect(), contains(vec![&edges[7], &edges[8]]).exactly());
+        assert_that!(&network.get_out(7).iter().collect(), contains(vec![&edges[9]]).exactly());
     }
 
     #[test]
     fn test_get_in() {
-        let network = get_test_network();
+        let edges = get_test_edges();
+        let network = get_test_network(&edges);
         assert_that!(network.get_in(0).len(), is(equal_to(0)));
-        assert_that!(network.get_in(1), contains(vec![&edges[0]]).exactly());
-        assert_that!(network.get_in(2), contains(vec![&edges[1], &edges[2]]).exactly());
-        assert_that!(network.get_in(3), contains(vec![&edges[3], &edges[4], &edges[5]]).exactly());
+        assert_that!(&network.get_in(1).iter().collect(), contains(vec![&edges[0]]).exactly());
+        assert_that!(&network.get_in(2).iter().collect(), contains(vec![&edges[1], &edges[2]]).exactly());
+        assert_that!(&network.get_in(3).iter().collect(), contains(vec![&edges[3], &edges[4], &edges[5]]).exactly());
         assert_that!(network.get_in(4).len(), is(equal_to(0)));
-        assert_that!(network.get_in(5), contains(vec![&edges[7], &edges[8]]).exactly());
-        assert_that!(network.get_in(6), contains(vec![&edges[6]]).exactly());
-        assert_that!(network.get_in(7), contains(vec![&edges[9]]).exactly());
+        assert_that!(&network.get_in(5).iter().collect(), contains(vec![&edges[7], &edges[8]]).exactly());
+        assert_that!(&network.get_in(6).iter().collect(), contains(vec![&edges[6]]).exactly());
+        assert_that!(&network.get_in(7).iter().collect(), contains(vec![&edges[9]]).exactly());
     }
 
     #[test]
@@ -230,7 +232,8 @@ mod tests {
 
     #[test]
     fn test_dijkstra() {
-        let network = get_test_network();
+        let edges = get_test_edges();
+        let network = get_test_network(&edges);
         let expected = vec![
             vec![Some(0), None, None, None, None, None, None, None],
             vec![Some(1), Some(0), None, None, None, None, None, None],
