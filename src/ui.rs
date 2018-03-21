@@ -10,6 +10,7 @@ use graphics::Graphics;
 use network::Network;
 use rand::{Rng, ThreadRng};
 use simulation::*;
+use steps::lookahead_driver::LookaheadDriver;
 
 pub struct UI {
 }
@@ -76,10 +77,7 @@ fn setup_simulation(city: &Arc<City>) -> Simulation {
     let add_vehicles = Box::new(SpawnVehicles{city: Arc::clone(&city)});
     let vehicle_updates: Vec<Box<VehicleUpdate>> = vec![
         Box::new(VehicleFree{}),
-        Box::new(MoveVehicle{
-            city: Arc::clone(city),
-            network,
-            costs}),
+        Box::new(LookaheadDriver::new(Arc::clone(city), network, costs)),
         Box::new(VehicleOccupy{city: Arc::clone(city)}),
     ];
     let update_vehicles = Box::new(UpdateVehicles{updates: vehicle_updates});
@@ -124,7 +122,7 @@ impl SimulationStep for RemoveVehicles {
         let mut rng = state.rng;
         let mut vehicles_next = vec![];
         for vehicle in traffic.vehicles {
-            if rng.gen_range(0, 400) != 0 && vehicle.location != *self.city.destinations.get(vehicle.destination).unwrap() {
+            if vehicle.location != *self.city.destinations.get(vehicle.destination).unwrap() {
                 vehicles_next.push(vehicle.clone());
             }
             else {
@@ -136,72 +134,6 @@ impl SimulationStep for RemoveVehicles {
     }
 }
 
-pub struct MoveVehicle {
-    city: Arc<City>,
-    network: Network,
-    costs: Vec<Vec<Option<u32>>>,
-}
-
-impl MoveVehicle {
-
-    fn extend(&self, path: &Vec<usize>, occupancy: &Occupancy) -> Vec<Vec<usize>> {
-        let neighbours: Vec<usize> = self.network.get_out(*path.last().unwrap()).iter().map(|n| n.to).collect();
-        let free_neighbours: Vec<usize> = neighbours.iter().cloned()
-            .filter(|n| {
-                let cell = self.city.get_cell(*n);
-                occupancy.is_free(cell.x, cell.y) && !path.contains(n)
-            }).collect();
-        let mut out = vec![];
-        for neighbour in free_neighbours {
-            let mut neighbour_path = path.clone();
-            neighbour_path.push(neighbour);
-            out.push(neighbour_path);
-        }
-        out
-    }
-
-    fn extend_all(&self, paths: &Vec<Vec<usize>>, occupancy: &Occupancy) -> Vec<Vec<usize>> {
-        let mut paths_out = vec![];
-        for path in paths {
-            paths_out.append(&mut self.extend(path, occupancy));
-        }
-        paths_out
-    }
-
-}
-
-impl VehicleUpdate for MoveVehicle {
-    fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, rng: &mut ThreadRng) {
-        let costs = self.costs.get(vehicle.destination).unwrap();
-        let node = self.city.get_index(&vehicle.location);
-        let mut paths_0 = vec![vec![node]];
-        let mut paths_1 = self.extend_all(&paths_0, &occupancy);
-        let mut paths_2 = self.extend_all(&paths_1, &occupancy);
-        let mut paths_3 = self.extend_all(&paths_2, &occupancy);
-        let mut paths = vec![];
-        paths.append(&mut paths_0);
-        paths.append(&mut paths_1);
-        paths.append(&mut paths_2);
-        paths.append(&mut paths_3);
-
-        let lowest_cost = paths.iter()
-            .map(|p| costs.get(*p.last().unwrap()))
-            .min();
-        if let Some(lowest_cost) = lowest_cost {
-            if lowest_cost < costs.get(node) {
-                // Get some neighbour with lowest cost
-                let candidates: Vec<usize> = paths.iter().cloned()
-                    .filter(|p| costs.get(*p.last().unwrap()) == lowest_cost)
-                    .map(|p| *p.get(1).unwrap())
-                    .collect();
-                let selected = rng.choose(&candidates).unwrap();
-
-                vehicle.location = self.city.get_cell(*selected);
-            }
-        }
-    }
-    
-}
 
 pub struct VehicleFree {
 }
