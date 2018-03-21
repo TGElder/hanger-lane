@@ -4,7 +4,7 @@ extern crate network;
 use std::sync::{Arc, RwLock};
 use version::{Version, Publisher};
 use super::{City, Vehicle, Traffic, Cell};
-use rand::ThreadRng;
+use rand::Rng;
 
 #[derive(Clone)]
 pub struct Occupancy {
@@ -40,11 +40,10 @@ impl Occupancy {
 
 }
 
-#[derive(Clone)]
 pub struct SimulationState {
     pub traffic: Traffic,
     pub occupancy: Occupancy,
-    pub rng: ThreadRng,
+    pub rng: Box<Rng>,
 }
 
 pub trait SimulationStep {
@@ -52,7 +51,7 @@ pub trait SimulationStep {
 }
 
 pub trait VehicleUpdate {
-    fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, rng: &mut ThreadRng);
+    fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, rng: &mut Box<Rng>);
 }
 
 pub struct UpdateVehicles {

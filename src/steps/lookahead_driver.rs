@@ -3,7 +3,7 @@ use City;
 use network::Network;
 use simulation::{Occupancy, VehicleUpdate};
 use Vehicle;
-use rand::{Rng, ThreadRng};
+use rand::Rng;
 
 pub struct LookaheadDriver {
     city: Arc<City>,
@@ -44,7 +44,7 @@ impl LookaheadDriver {
 }
 
 impl VehicleUpdate for LookaheadDriver {
-    fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, rng: &mut ThreadRng) {
+    fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, rng: &mut Box<Rng>) {
         let costs = self.costs.get(vehicle.destination).unwrap();
         let node = self.city.get_index(&vehicle.location);
         let mut paths_0 = vec![vec![node]];
@@ -74,4 +74,14 @@ impl VehicleUpdate for LookaheadDriver {
         }
     }
     
+}
+
+#[cfg(tests)]
+mod tests {
+
+    #[test]
+    fn test_a() {
+        assert!(true);
+    }
+
 }

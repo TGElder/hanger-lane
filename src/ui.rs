@@ -8,7 +8,7 @@ use simulation::Simulator;
 use super::{Cell, City, Vehicle, Traffic, DIRECTIONS};
 use graphics::Graphics;
 use network::Network;
-use rand::{Rng, ThreadRng};
+use rand::Rng;
 use simulation::*;
 use steps::lookahead_driver::LookaheadDriver;
 
@@ -19,7 +19,7 @@ impl UI {
     
     pub fn launch() {
 
-        let mut rng = rand::thread_rng();
+        let mut rng: Box<Rng> = Box::new(rand::thread_rng());
         let mut sources = vec![];
         let mut destinations = vec![];
 
@@ -65,7 +65,7 @@ impl UI {
 fn setup_simulation_state(city: &Arc<City>) -> SimulationState {
     let traffic = Traffic{ id: 0, vehicles: vec![] };
     let occupancy = Occupancy::new(&city, &traffic.vehicles);
-    SimulationState{ traffic, occupancy, rng: rand::thread_rng() }
+    SimulationState{ traffic, occupancy, rng: Box::new(rand::thread_rng()) }
 }
 
 fn setup_simulation(city: &Arc<City>) -> Simulation {
@@ -86,7 +86,7 @@ fn setup_simulation(city: &Arc<City>) -> Simulation {
     Simulation{ steps: vec![add_vehicles, update_vehicles, remove_vehicles] }
 }
 
-fn get_random_cell(rng: &mut ThreadRng) -> Cell {
+fn get_random_cell(rng: &mut Box<Rng>) -> Cell {
     Cell {
         x: rng.gen_range(0, 512),
         y: rng.gen_range(0, 512),
@@ -119,7 +119,7 @@ impl SimulationStep for RemoveVehicles {
     fn step(&self, state: SimulationState) -> SimulationState {
         let mut traffic = state.traffic;
         let mut occupancy = state.occupancy;
-        let mut rng = state.rng;
+        let rng = state.rng;
         let mut vehicles_next = vec![];
         for vehicle in traffic.vehicles {
             if vehicle.location != *self.city.destinations.get(vehicle.destination).unwrap() {
@@ -139,7 +139,7 @@ pub struct VehicleFree {
 }
 
 impl VehicleUpdate for VehicleFree {
-    fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, _rng: &mut ThreadRng) {
+    fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, _rng: &mut Box<Rng>) {
         occupancy.free(&vehicle.location);
     }
 }
@@ -149,7 +149,7 @@ pub struct VehicleOccupy {
 }
 
 impl VehicleUpdate for VehicleOccupy {
-    fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, _rng: &mut ThreadRng) {
+    fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, _rng: &mut Box<Rng>) {
         if &vehicle.location != self.city.destinations.get(vehicle.destination).unwrap() {
             occupancy.occupy(&vehicle.location);
         }
