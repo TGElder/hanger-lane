@@ -28,11 +28,10 @@ impl Occupancy {
     }
 
     fn set(&mut self, index: usize, value: bool) {
-        let cell = self.city.get_cell(index);
+        let start = 4 * (index / 4);
 
-        for direction in DIRECTIONS.iter() {
-            let to_occupy = Cell::new(cell.x, cell.y, *direction);
-            *self.occupancy.get_mut(self.city.get_index(&to_occupy)).unwrap() = value;
+        for offset in 0..4 {
+            *self.occupancy.get_mut(start + offset).unwrap() = value;
         }
     }
 
@@ -128,7 +127,6 @@ impl Simulator {
             }
 
             while *self.running.read().unwrap() {
-                println!("Stepping");
                 state = self.simulation.step(state);
                 self.traffic_publisher.publish(&state.traffic);
             }
