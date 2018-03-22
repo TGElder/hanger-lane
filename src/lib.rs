@@ -118,14 +118,14 @@ impl City {
             }
         }
 
-        x + (y * self.width) + (get_direction_index(d) * self.width * self.height)
+        get_direction_index(d) + (x * 4) + (y * 4 * self.width) 
     }
 
     pub fn get_cell(&self, index: usize) -> Cell {
-        let d = index / (self.width * self.height);
-        let r = index % (self.width * self.height);
-        let y = r / self.width;
-        let x = r % self.width;
+        let y = index / (4 * self.width);
+        let r = index % (4 * self.width);
+        let x = r / 4;
+        let d = r % 4;
         Cell::new(x, y, DIRECTIONS[d])
     }
 
@@ -184,10 +184,10 @@ mod tests {
 
         let mut cells = Vec::with_capacity((city.width * city.height * 4));
 
-        for d in DIRECTIONS.iter() {
-            for y in 0..city.height {
-                for x in 0..city.width {
-                    cells.push( Cell { x, y, d: d.clone() } );
+        for y in 0..city.height {
+            for x in 0..city.width {
+                for d in DIRECTIONS.iter() {
+                cells.push( Cell { x, y, d: d.clone() } );
                 }
             }
         }
@@ -211,10 +211,10 @@ mod tests {
 
         let actual = city.create_edges();
         let expected = vec![
-            Edge::new(31, 1, 1),
-            Edge::new(1, 11, 1),
-            Edge::new(11, 23, 1),
-            Edge::new(23, 31, 1)
+            Edge::new(4, 9, 1),
+            Edge::new(9, 22, 1),
+            Edge::new(22, 19, 1),
+            Edge::new(19, 4, 1)
         ];
 
         assert_that!(&actual.iter().collect(), contains(expected.iter().collect()).exactly());
