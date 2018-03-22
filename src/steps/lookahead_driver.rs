@@ -1,29 +1,24 @@
-use std::sync::Arc;
-use City;
 use network::Network;
 use simulation::{Occupancy, VehicleUpdate};
 use Vehicle;
 use rand::Rng;
 
 pub struct LookaheadDriver {
-    city: Arc<City>,
     network: Network,
     costs: Vec<Vec<Option<u32>>>,
 }
 
 impl LookaheadDriver {
 
-    pub fn new(city: Arc<City>, network: Network, costs: Vec<Vec<Option<u32>>>) -> LookaheadDriver {
-        LookaheadDriver{ city, network, costs }
+    pub fn new(network: Network, costs: Vec<Vec<Option<u32>>>) -> LookaheadDriver {
+        LookaheadDriver{ network, costs }
     }
 
     fn extend(&self, path: &Vec<usize>, occupancy: &Occupancy) -> Vec<Vec<usize>> {
         let neighbours: Vec<usize> = self.network.get_out(*path.last().unwrap()).iter().map(|n| n.to).collect();
         let free_neighbours: Vec<usize> = neighbours.iter().cloned()
-            .filter(|n| {
-                let cell = self.city.get_cell(*n);
-                occupancy.is_free(cell.x, cell.y) && !path.contains(n)
-            }).collect();
+            .filter(|n| { occupancy.is_free(*n) && !path.contains(n) })
+            .collect();
         let mut out = vec![];
         for neighbour in free_neighbours {
             let mut neighbour_path = path.clone();
@@ -45,8 +40,8 @@ impl LookaheadDriver {
 
 impl VehicleUpdate for LookaheadDriver {
     fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, rng: &mut Box<Rng>) {
-        let costs = self.costs.get(vehicle.destination).unwrap();
-        let node = self.city.get_index(&vehicle.location);
+        let costs = self.costs.get(vehicle.destination_index).unwrap();
+        let node = vehicle.location;
         let mut paths_0 = vec![vec![node]];
         let mut paths_1 = self.extend_all(&paths_0, &occupancy);
         let mut paths_2 = self.extend_all(&paths_1, &occupancy);
@@ -58,18 +53,16 @@ impl VehicleUpdate for LookaheadDriver {
         paths.append(&mut paths_3);
 
         let lowest_cost = paths.iter()
-            .map(|p| costs.get(*p.last().unwrap()))
+            .map(|p| costs.get(*p.last().unwrap()).unwrap())
             .min();
         if let Some(lowest_cost) = lowest_cost {
-            if lowest_cost < costs.get(node) {
+            if lowest_cost < costs.get(node).unwrap() {
                 // Get some neighbour with lowest cost
                 let candidates: Vec<usize> = paths.iter().cloned()
-                    .filter(|p| costs.get(*p.last().unwrap()) == lowest_cost)
+                    .filter(|p| costs.get(*p.last().unwrap()).unwrap() == lowest_cost)
                     .map(|p| *p.get(1).unwrap())
                     .collect();
-                let selected = rng.choose(&candidates).unwrap();
-
-                vehicle.location = self.city.get_cell(*selected);
+                vehicle.location = *rng.choose(&candidates).unwrap();
             }
         }
     }
@@ -79,12 +72,14 @@ impl VehicleUpdate for LookaheadDriver {
 #[cfg(test)]
 mod tests {
 
-    use network::Edge;
+    use network::{Edge, Network};
 
     #[test]
     fn test_a() {
-        let test_edges = Edge::create_grid(2, 4, 1, Edge::create_4_neighbour_deltas());
-        assert!(true);
+        let edges = Edge::create_grid(2, 4, 1, Edge::create_4_neighbour_deltas());
+        let network = Network::new(8, &edges);
+        let costs = network.dijkstra(7);
+
     }
 
 }

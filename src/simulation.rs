@@ -3,39 +3,45 @@ extern crate network;
 
 use std::sync::{Arc, RwLock};
 use version::{Version, Publisher};
-use super::{City, Vehicle, Traffic, Cell};
+use super::{City, Vehicle, Traffic, Cell, DIRECTIONS};
 use rand::Rng;
 
 #[derive(Clone)]
 pub struct Occupancy {
-    occupancy: Vec<Vec<bool>>,
+    city: Arc<City>,
+    occupancy: Vec<bool>,
 }
 
 impl Occupancy {
 
-    pub fn new(city: &City, vehicles: &Vec<Vehicle>) -> Occupancy {
-        let occupancy = vec![vec![false; city.width as usize]; city.height as usize];
-        let mut out = Occupancy{ occupancy };
+    pub fn new(city: Arc<City>, vehicles: &Vec<Vehicle>) -> Occupancy {
+        let occupancy = vec![false; city.get_num_nodes()];
+        let mut out = Occupancy{ city, occupancy };
         for vehicle in vehicles.iter() {
-            out.occupy(&vehicle.location);
+            out.occupy(vehicle.location);
         }
         out
     }
     
-    pub fn is_free(&self, x: usize, y: usize) -> bool {
-        !self.occupancy.get(x).unwrap().get(y).unwrap()
+    pub fn is_free(&self, index: usize) -> bool {
+        !self.occupancy.get(index).unwrap()
     }
 
-    fn set(&mut self, vehicle: &Cell, value: bool) {
-        *self.occupancy.get_mut(vehicle.x as usize).unwrap().get_mut(vehicle.y as usize).unwrap() = value;
+    fn set(&mut self, index: usize, value: bool) {
+        let cell = self.city.get_cell(index);
+
+        for direction in DIRECTIONS.iter() {
+            let to_occupy = Cell::new(cell.x, cell.y, *direction);
+            *self.occupancy.get_mut(self.city.get_index(&to_occupy)).unwrap() = value;
+        }
     }
 
-    pub fn free(&mut self, vehicle: &Cell) {
-        self.set(vehicle, false);
+    pub fn free(&mut self, index: usize) {
+        self.set(index, false);
     }
 
-    pub fn occupy(&mut self, vehicle: &Cell) {
-        self.set(vehicle, true);
+    pub fn occupy(&mut self, index: usize) {
+        self.set(index, true);
     }
 
 }

@@ -64,22 +64,22 @@ pub struct City {
     width: usize,
     height: usize,
     roads: Vec<Road>,
-    sources: Vec<Cell>,
-    destinations: Vec<Cell>,
+    sources: Vec<usize>,
+    destinations: Vec<usize>,
 }
 
 use network::Edge;
 
 impl City {
-    pub fn new(width: usize, height: usize, sources: Vec<Cell>, destinations: Vec<Cell>) -> City {
+    pub fn new(width: usize, height: usize, sources: Vec<usize>, destinations: Vec<usize>) -> City {
         City{ id: 0, width, height, roads: vec![], sources, destinations }
     }
 
-    pub fn from(_: &str, sources: Vec<Cell>, destinations: Vec<Cell>) -> City {
+    pub fn from(_: &str, sources: Vec<usize>, destinations: Vec<usize>) -> City {
         City::new(1024, 1024, sources, destinations)
     }
 
-    pub fn with_all_roads(width: usize, height: usize, sources: Vec<Cell>, destinations: Vec<Cell>) -> City {
+    pub fn with_all_roads(width: usize, height: usize, sources: Vec<usize>, destinations: Vec<usize>) -> City {
 
         let mut roads = Vec::with_capacity((width * height * 12));
 
@@ -146,8 +146,9 @@ impl City {
 
 #[derive(Clone, Debug)]
 pub struct Vehicle {
-    location: Cell,
+    location: usize,
     destination: usize,
+    destination_index: usize,
 }
 
 #[derive(Clone, Debug)]
