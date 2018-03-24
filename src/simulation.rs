@@ -3,20 +3,19 @@ extern crate network;
 
 use std::sync::{Arc, RwLock};
 use version::{Version, Publisher};
-use super::{City, Vehicle, Traffic, Cell, DIRECTIONS};
+use super::{Vehicle, Traffic};
 use rand::Rng;
 
 #[derive(Clone)]
 pub struct Occupancy {
-    city: Arc<City>,
     occupancy: Vec<bool>,
 }
 
 impl Occupancy {
 
-    pub fn new(city: Arc<City>, vehicles: &Vec<Vehicle>) -> Occupancy {
-        let occupancy = vec![false; city.get_num_nodes()];
-        let mut out = Occupancy{ city, occupancy };
+    pub fn new(vehicles: &Vec<Vehicle>, node_count: usize) -> Occupancy {
+        let occupancy = vec![false; node_count];
+        let mut out = Occupancy{ occupancy };
         for vehicle in vehicles.iter() {
             out.occupy(vehicle.location);
         }
@@ -28,11 +27,7 @@ impl Occupancy {
     }
 
     fn set(&mut self, index: usize, value: bool) {
-        let start = 4 * (index / 4);
-
-        for offset in 0..4 {
-            *self.occupancy.get_mut(start + offset).unwrap() = value;
-        }
+        *self.occupancy.get_mut(index).unwrap() = value;
     }
 
     pub fn free(&mut self, index: usize) {

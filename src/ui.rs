@@ -67,7 +67,7 @@ impl UI {
 
 fn setup_simulation_state(city: &Arc<City>) -> SimulationState {
     let traffic = Traffic{ id: 0, vehicles: vec![] };
-    let occupancy = Occupancy::new(Arc::clone(&city), &traffic.vehicles);
+    let occupancy = Occupancy::new(&traffic.vehicles, city.get_num_nodes());
     SimulationState{ traffic, occupancy, rng: Box::new(rand::thread_rng()) }
 }
 
@@ -136,7 +136,11 @@ pub struct VehicleFree {
 
 impl VehicleUpdate for VehicleFree {
     fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, _rng: &mut Box<Rng>) {
-        occupancy.free(vehicle.location);
+        let start = 4 * (vehicle.location / 4);
+
+        for offset in 0..4 {
+            occupancy.free(start + offset);
+        }
     }
 }
 
@@ -146,7 +150,11 @@ pub struct VehicleOccupy {
 impl VehicleUpdate for VehicleOccupy {
     fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, _rng: &mut Box<Rng>) {
         if &vehicle.location != &vehicle.destination {
-            occupancy.occupy(vehicle.location);
+            let start = 4 * (vehicle.location / 4);
+
+            for offset in 0..4 {
+                occupancy.occupy(start + offset);
+            }
         }
     }
 }
