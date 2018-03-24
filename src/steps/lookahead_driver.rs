@@ -1,5 +1,6 @@
 use network::Network;
-use simulation::{Occupancy, VehicleUpdate};
+use occupancy::Occupancy;
+use simulation::VehicleUpdate;
 use Vehicle;
 use rand::Rng;
 

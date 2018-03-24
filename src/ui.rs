@@ -4,6 +4,7 @@ extern crate network;
 use std::thread;
 use std::sync::{Arc, RwLock};
 use version::Publisher;
+use occupancy::Occupancy;
 use simulation::Simulator;
 use super::{City, Vehicle, Traffic};
 use graphics::Graphics;
@@ -67,7 +68,7 @@ impl UI {
 
 fn setup_simulation_state(city: &Arc<City>) -> SimulationState {
     let traffic = Traffic{ id: 0, vehicles: vec![] };
-    let occupancy = Occupancy::new(&traffic.vehicles, city.get_num_nodes());
+    let occupancy = Occupancy::new(city.get_num_nodes());
     SimulationState{ traffic, occupancy, rng: Box::new(rand::thread_rng()) }
 }
 

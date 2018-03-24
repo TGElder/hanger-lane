@@ -4,6 +4,7 @@ extern crate network;
 
 mod version;
 mod simulation;
+mod occupancy;
 mod graphics;
 mod steps;
 pub mod ui;

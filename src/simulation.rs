@@ -5,40 +5,7 @@ use std::sync::{Arc, RwLock};
 use version::{Version, Publisher};
 use super::{Vehicle, Traffic};
 use rand::Rng;
-
-#[derive(Clone)]
-pub struct Occupancy {
-    occupancy: Vec<bool>,
-}
-
-impl Occupancy {
-
-    pub fn new(vehicles: &Vec<Vehicle>, node_count: usize) -> Occupancy {
-        let occupancy = vec![false; node_count];
-        let mut out = Occupancy{ occupancy };
-        for vehicle in vehicles.iter() {
-            out.occupy(vehicle.location);
-        }
-        out
-    }
-    
-    pub fn is_free(&self, index: usize) -> bool {
-        !self.occupancy.get(index).unwrap()
-    }
-
-    fn set(&mut self, index: usize, value: bool) {
-        *self.occupancy.get_mut(index).unwrap() = value;
-    }
-
-    pub fn free(&mut self, index: usize) {
-        self.set(index, false);
-    }
-
-    pub fn occupy(&mut self, index: usize) {
-        self.set(index, true);
-    }
-
-}
+use occupancy::Occupancy;
 
 pub struct SimulationState {
     pub traffic: Traffic,
