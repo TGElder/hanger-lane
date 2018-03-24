@@ -5,14 +5,15 @@ use Vehicle;
 use rand::Rng;
 
 pub struct LookaheadDriver {
+    lookahead: usize,
     network: Network,
     costs: Vec<Vec<Option<u32>>>,
 }
 
 impl LookaheadDriver {
 
-    pub fn new(network: Network, costs: Vec<Vec<Option<u32>>>) -> LookaheadDriver {
-        LookaheadDriver{ network, costs }
+    pub fn new(lookahead: usize, network: Network, costs: Vec<Vec<Option<u32>>>) -> LookaheadDriver {
+        LookaheadDriver{ lookahead, network, costs }
     }
 
     fn extend(&self, path: &Vec<usize>, occupancy: &Occupancy) -> Vec<Vec<usize>> {
@@ -29,11 +30,14 @@ impl LookaheadDriver {
         out
     }
 
-    fn extend_all(&self, paths: &Vec<Vec<usize>>, occupancy: &Occupancy) -> Vec<Vec<usize>> {
+    fn extend_all(&self, paths: &mut Vec<Vec<usize>>, length_to_extend: usize, occupancy: &Occupancy) -> Vec<Vec<usize>> {
         let mut paths_out = vec![];
-        for path in paths {
-            paths_out.append(&mut self.extend(path, occupancy));
+        for path in paths.iter() {
+            if path.len() == length_to_extend {
+                paths_out.append(&mut self.extend(path, occupancy));
+            }
         }
+        paths_out.append(paths);
         paths_out
     }
 
@@ -43,27 +47,36 @@ impl VehicleUpdate for LookaheadDriver {
     fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, rng: &mut Box<Rng>) {
         let costs = self.costs.get(vehicle.destination_index).unwrap();
         let node = vehicle.location;
-        let mut paths_0 = vec![vec![node]];
-        let mut paths_1 = self.extend_all(&paths_0, &occupancy);
-        let mut paths_2 = self.extend_all(&paths_1, &occupancy);
-        let mut paths_3 = self.extend_all(&paths_2, &occupancy);
-        let mut paths = vec![];
-        paths.append(&mut paths_0);
-        paths.append(&mut paths_1);
-        paths.append(&mut paths_2);
-        paths.append(&mut paths_3);
+        let mut paths = vec![vec![node]];
+        for i in 0..self.lookahead {
+            paths = self.extend_all(&mut paths, i + 1, &occupancy);
+        }
 
+        println!("Position = {}", node);
+        println!("Paths = {:?}", paths);
         let lowest_cost = paths.iter()
             .map(|p| costs.get(*p.last().unwrap()).unwrap())
             .min();
         if let Some(lowest_cost) = lowest_cost {
             if lowest_cost < costs.get(node).unwrap() {
+
+                println!("Lowest cost = {:?}", lowest_cost);
                 // Get some neighbour with lowest cost
-                let candidates: Vec<usize> = paths.iter().cloned()
+                let candidates: Vec<Vec<usize>> = paths.iter().cloned()
                     .filter(|p| costs.get(*p.last().unwrap()).unwrap() == lowest_cost)
+                    .collect();
+                println!("Candidates = {:?}", candidates);
+                let shortest = candidates.iter()
+                    .map(|p| p.len())
+                    .min().unwrap();
+                println!("Shortest = {}", shortest);
+                let candidates: Vec<usize> = candidates.iter().cloned()
+                    .filter(|p| p.len() == shortest)
                     .map(|p| *p.get(1).unwrap())
                     .collect();
+                println!("Candidates = {:?}", candidates);
                 vehicle.location = *rng.choose(&candidates).unwrap();
+                println!("Selected = {}", vehicle.location);
             }
         }
     }
@@ -72,15 +85,161 @@ impl VehicleUpdate for LookaheadDriver {
 
 #[cfg(test)]
 mod tests {
+    extern crate rand;
 
+    use super::Vehicle;
     use network::{Edge, Network};
+    use simulation::VehicleUpdate;
+    use steps::lookahead_driver::LookaheadDriver;
+    use occupancy::Occupancy;
+    use rand::Rng;
+
+    fn get_test_driver(lookahead: usize, destination: usize) -> LookaheadDriver {
+        let edges = Edge::create_grid(4, 4, 1, Edge::create_4_neighbour_deltas());
+        let network = Network::new(16, &edges);
+        let costs = vec![network.dijkstra(destination)];
+        LookaheadDriver::new(lookahead, network, costs)
+    }
+
+    fn init(lookahead: usize, vehicle: usize, destination: usize) -> (LookaheadDriver, Vehicle, Occupancy, Box<Rng>) {
+        let driver = get_test_driver(lookahead, destination);
+        let vehicle = Vehicle{ location: vehicle, destination, destination_index: 0 };
+        let occupancy = Occupancy::new(16);
+        let rng: Box<Rng> = Box::new(rand::thread_rng());
+        (driver, vehicle, occupancy, rng)
+    }
+    
+    #[test]
+    fn no_obstructions() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, 13);
+
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 5);
+    }
 
     #[test]
-    fn test_a() {
-        let edges = Edge::create_grid(2, 4, 1, Edge::create_4_neighbour_deltas());
-        let network = Network::new(8, &edges);
-        let costs = network.dijkstra(7);
+    fn lookahead_required_for_obstruction() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, 13);
 
+        occupancy.occupy(4);
+        occupancy.occupy(5);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 2);
+    }
+
+    #[test]
+    fn lookahead_not_enough_for_obstruction() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(2, 1, 13);
+
+        occupancy.occupy(4);
+        occupancy.occupy(5);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 1);
+    }
+
+    #[test]
+    fn full_lookahead_not_required_for_obstruction() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(4, 1, 13);
+
+        occupancy.occupy(4);
+        occupancy.occupy(5);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 2);
+    }
+    
+    #[test]
+    fn no_route() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, 13);
+
+        occupancy.occupy(4);
+        occupancy.occupy(5);
+        occupancy.occupy(6);
+        occupancy.occupy(7);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 1);
+    }
+
+    #[test]
+    fn two_routes_a() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, 13);
+
+        occupancy.occupy(5);
+        occupancy.occupy(6);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 0);
+    }
+
+    #[test]
+    fn two_routes_b() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 2, 13);
+
+        occupancy.occupy(5);
+        occupancy.occupy(6);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 1 || vehicle.location == 3);
+    }
+
+    #[test]
+    fn two_routes_c() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 2, 14);
+
+        occupancy.occupy(5);
+        occupancy.occupy(6);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 3);
+    }
+    
+    #[test]
+    fn adjacent_to_goal() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, 1);
+
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        println!("###{}", vehicle.location);
+        assert!(vehicle.location == 1);
+    }
+
+    #[test]
+    fn on_goal() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, 0);
+
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 0);
+    }
+
+    #[test]
+    fn goal_blocked() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, 1);
+
+        occupancy.occupy(1);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 0);
+    }
+
+    #[test]
+    fn position_blocked() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, 1);
+
+        occupancy.occupy(0);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 1);
+    }
+
+    #[test]
+    fn all_the_way() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, 13);
+
+        occupancy.occupy(4);
+        occupancy.occupy(5);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 2);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 6);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 10);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 9 || vehicle.location == 14);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 13);
     }
 
 }

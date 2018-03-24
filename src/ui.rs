@@ -81,7 +81,7 @@ fn setup_simulation(city: &Arc<City>) -> Simulation {
     let add_vehicles = Box::new(SpawnVehicles{city: Arc::clone(&city)});
     let vehicle_updates: Vec<Box<VehicleUpdate>> = vec![
         Box::new(VehicleFree{}),
-        Box::new(LookaheadDriver::new(network, costs)),
+        Box::new(LookaheadDriver::new(3, network, costs)),
         Box::new(VehicleOccupy{}),
     ];
     let update_vehicles = Box::new(UpdateVehicles{updates: vehicle_updates});
