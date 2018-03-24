@@ -52,31 +52,24 @@ impl VehicleUpdate for LookaheadDriver {
             paths = self.extend_all(&mut paths, i + 1, &occupancy);
         }
 
-        println!("Position = {}", node);
-        println!("Paths = {:?}", paths);
         let lowest_cost = paths.iter()
             .map(|p| costs.get(*p.last().unwrap()).unwrap())
             .min();
         if let Some(lowest_cost) = lowest_cost {
             if lowest_cost < costs.get(node).unwrap() {
 
-                println!("Lowest cost = {:?}", lowest_cost);
                 // Get some neighbour with lowest cost
                 let candidates: Vec<Vec<usize>> = paths.iter().cloned()
                     .filter(|p| costs.get(*p.last().unwrap()).unwrap() == lowest_cost)
                     .collect();
-                println!("Candidates = {:?}", candidates);
                 let shortest = candidates.iter()
                     .map(|p| p.len())
                     .min().unwrap();
-                println!("Shortest = {}", shortest);
                 let candidates: Vec<usize> = candidates.iter().cloned()
                     .filter(|p| p.len() == shortest)
                     .map(|p| *p.get(1).unwrap())
                     .collect();
-                println!("Candidates = {:?}", candidates);
                 vehicle.location = *rng.choose(&candidates).unwrap();
-                println!("Selected = {}", vehicle.location);
             }
         }
     }
