@@ -12,6 +12,7 @@ use network::Network;
 use rand::Rng;
 use simulation::*;
 use steps::lookahead_driver::LookaheadDriver;
+use steps::block_occupier::{VehicleFree, VehicleOccupy};
 
 pub struct UI {
 }
@@ -80,9 +81,9 @@ fn setup_simulation(city: &Arc<City>) -> Simulation {
     }
     let add_vehicles = Box::new(SpawnVehicles{city: Arc::clone(&city)});
     let vehicle_updates: Vec<Box<VehicleUpdate>> = vec![
-        Box::new(VehicleFree{}),
-        Box::new(LookaheadDriver::new(3, network, costs)),
-        Box::new(VehicleOccupy{}),
+        Box::new(VehicleFree::new(4)),
+        Box::new(LookaheadDriver::new(2, network, costs)),
+        Box::new(VehicleOccupy::new(4)),
     ];
     let update_vehicles = Box::new(UpdateVehicles{updates: vehicle_updates});
     let remove_vehicles = Box::new(RemoveVehicles{});
@@ -130,33 +131,3 @@ impl SimulationStep for RemoveVehicles {
         SimulationState{traffic, occupancy, rng}
     }
 }
-
-
-pub struct VehicleFree {
-}
-
-impl VehicleUpdate for VehicleFree {
-    fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, _rng: &mut Box<Rng>) {
-        let start = 4 * (vehicle.location / 4);
-
-        for offset in 0..4 {
-            occupancy.free(start + offset);
-        }
-    }
-}
-
-pub struct VehicleOccupy {
-}
-
-impl VehicleUpdate for VehicleOccupy {
-    fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, _rng: &mut Box<Rng>) {
-        if &vehicle.location != &vehicle.destination {
-            let start = 4 * (vehicle.location / 4);
-
-            for offset in 0..4 {
-                occupancy.occupy(start + offset);
-            }
-        }
-    }
-}
-

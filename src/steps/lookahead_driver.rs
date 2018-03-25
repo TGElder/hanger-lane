@@ -18,7 +18,7 @@ impl LookaheadDriver {
 
     fn extend(&self, path: &Vec<usize>, occupancy: &Occupancy) -> Vec<Vec<usize>> {
         let neighbours: Vec<usize> = self.network.get_out(*path.last().unwrap()).iter().map(|n| n.to).collect();
-        let free_neighbours: Vec<usize> = neighbours.iter().cloned()
+        let free_neighbours: Vec<usize> = neighbours.into_iter()
             .filter(|n| { occupancy.is_free(*n) && !path.contains(n) })
             .collect();
         let mut out = vec![];
@@ -45,29 +45,26 @@ impl LookaheadDriver {
 
 impl VehicleUpdate for LookaheadDriver {
     fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, rng: &mut Box<Rng>) {
-        let costs = self.costs.get(vehicle.destination_index).unwrap();
+        let costs = &self.costs[vehicle.destination_index];
         let node = vehicle.location;
         let mut paths = vec![vec![node]];
         for i in 0..self.lookahead {
             paths = self.extend_all(&mut paths, i + 1, &occupancy);
         }
-
         let lowest_cost = paths.iter()
-            .map(|p| costs.get(*p.last().unwrap()).unwrap())
+            .map(|p| costs[*p.last().unwrap()])
             .min();
         if let Some(lowest_cost) = lowest_cost {
-            if lowest_cost < costs.get(node).unwrap() {
-
-                // Get some neighbour with lowest cost
-                let candidates: Vec<Vec<usize>> = paths.iter().cloned()
-                    .filter(|p| costs.get(*p.last().unwrap()).unwrap() == lowest_cost)
+            if lowest_cost < costs[node] {
+                let candidates: Vec<Vec<usize>> = paths.into_iter()
+                    .filter(|p| costs[*p.last().unwrap()] == lowest_cost)
                     .collect();
                 let shortest = candidates.iter()
                     .map(|p| p.len())
                     .min().unwrap();
-                let candidates: Vec<usize> = candidates.iter().cloned()
+                let candidates: Vec<usize> = candidates.into_iter()
                     .filter(|p| p.len() == shortest)
-                    .map(|p| *p.get(1).unwrap())
+                    .map(|p| p[1])
                     .collect();
                 vehicle.location = *rng.choose(&candidates).unwrap();
             }

@@ -11,11 +11,11 @@ impl Occupancy {
     }
     
     pub fn is_free(&self, index: usize) -> bool {
-        !self.occupancy.get(index).unwrap()
+        !self.occupancy[index]
     }
 
     fn set(&mut self, index: usize, value: bool) {
-        *self.occupancy.get_mut(index).unwrap() = value;
+        self.occupancy[index] = value;
     }
 
     pub fn free(&mut self, index: usize) {
