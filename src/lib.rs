@@ -9,6 +9,9 @@ mod graphics;
 mod steps;
 pub mod ui;
 
+use std::fs::File;
+use std::io::prelude::*;
+
 const DIRECTIONS: [Direction; 4] = [Direction::North, Direction::East, Direction::South, Direction::West];
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -95,6 +98,12 @@ impl City {
         }
 
         City { id: 0, width, height, roads, sources, destinations }
+    }
+
+    fn from_map_file(width: usize, height: usize, file: String) {
+        let mut f = File::open(file).expect("File not found");
+        let mut contents = String::new();
+        f.read_to_string(&mut contents).expect("Failed to read file");
     }
 
     fn forward(&self, &Cell{ref x, ref y, ref d}: &Cell) -> Option<Cell> {

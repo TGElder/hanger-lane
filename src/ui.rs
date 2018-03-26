@@ -77,7 +77,7 @@ fn setup_simulation(city: &Arc<City>) -> Simulation {
     let network = Network::new(city.get_num_nodes(), &city.create_edges());
     let mut costs = Vec::with_capacity(city.destinations.len());
     for destination in city.destinations.iter() {
-        costs.push(network.dijkstra(*destination));
+        costs.push(network.dijkstra(vec![*destination]));
     }
     let add_vehicles = Box::new(SpawnVehicles{city: Arc::clone(&city)});
     let vehicle_updates: Vec<Box<VehicleUpdate>> = vec![

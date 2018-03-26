@@ -87,7 +87,7 @@ mod tests {
     fn get_test_driver(lookahead: usize, destination: usize) -> LookaheadDriver {
         let edges = Edge::create_grid(4, 4, 1, Edge::create_4_neighbour_deltas());
         let network = Network::new(16, &edges);
-        let costs = vec![network.dijkstra(destination)];
+        let costs = vec![network.dijkstra(vec![destination])];
         LookaheadDriver::new(lookahead, network, costs)
     }
 

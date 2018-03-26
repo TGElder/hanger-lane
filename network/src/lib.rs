@@ -94,7 +94,7 @@ impl Network {
         &self.edges_out[node]
     }
 
-    pub fn dijkstra(&self, node: usize) -> Vec<Option<u32>> {
+    pub fn dijkstra(&self, nodes: Vec<usize>) -> Vec<Option<u32>> {
         use std::collections::BinaryHeap;
         use std::cmp::Ordering;
 
@@ -126,7 +126,9 @@ impl Network {
         let mut out: Vec<Option<u32>> = vec![None; self.nodes];
         let mut heap = BinaryHeap::new();
 
-        heap.push(Node{ index: node, cost: 0 });
+        for node in nodes {
+            heap.push(Node{ index: node, cost: 0 });
+        }
 
         while let Some(Node {index, cost}) = heap.pop() {
             if !closed[index] {
@@ -246,8 +248,37 @@ mod tests {
         ];
         
         for i in 0..8 {
-            assert_that!(&network.dijkstra(i), is(equal_to(&expected[i])));
+            assert_that!(&network.dijkstra(vec![i]), is(equal_to(&expected[i])));
         }
     }
+
+    #[test]
+    fn test_dijkstra_on_grid() {
+        let edges = Edge::create_grid(4, 4, 1, Edge::create_4_neighbour_deltas());
+        let network = Network::new(16, &edges);
+        let expected = vec![
+           Some(0), Some(1), Some(2), Some(3),
+           Some(1), Some(2), Some(3), Some(4),
+           Some(2), Some(3), Some(4), Some(5),
+           Some(3), Some(4), Some(5), Some(6),
+        ];
+        
+        assert_that!(&network.dijkstra(vec![0]), is(equal_to(&expected)));
+    }
+
+    #[test]
+    fn test_multi_destinations() {
+        let edges = Edge::create_grid(4, 4, 1, Edge::create_4_neighbour_deltas());
+        let network = Network::new(16, &edges);
+        let expected = vec![
+           Some(0), Some(0), Some(0), Some(0),
+           Some(1), Some(1), Some(1), Some(1),
+           Some(2), Some(2), Some(2), Some(2),
+           Some(3), Some(3), Some(3), Some(3),
+        ];
+        
+        assert_that!(&network.dijkstra(vec![0, 1, 2, 3]), is(equal_to(&expected)));
+    }
+ 
 }
 
