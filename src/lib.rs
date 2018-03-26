@@ -100,10 +100,59 @@ impl City {
         City { id: 0, width, height, roads, sources, destinations }
     }
 
-    fn from_map_file(width: usize, height: usize, file: String) {
+    fn from_map_file(width: usize, height: usize, file: String) -> City {
         let mut f = File::open(file).expect("File not found");
         let mut contents = String::new();
         f.read_to_string(&mut contents).expect("Failed to read file");
+
+        let mut sources = vec![];
+        let mut destinations = vec![];
+        let mut roads = vec![];
+        let mut x = 0;
+        let mut y = 0;
+        for line in contents.split("\n") {
+            x = 0;
+            for cell in line.split(",") {
+                for symbol in cell.chars() {
+                    let direction = match symbol {
+                        '^' | 'N' | 'n' => Direction::North,
+                        '>' | 'E' | 'e' => Direction::East,
+                        'v' | 'S' | 's' => Direction::South,
+                        '<' | 'W' | 'w' => Direction::West,
+                        _ => panic!("Unexpected character [{}]", symbol)
+                    };
+                    match symbol {
+                        '^' | '>' | 'v' | '<' => {
+                            for entry in DIRECTIONS.iter() {
+                                roads.push(Road::new(x, y, *entry, direction));
+                            }
+                        },
+                        'N' | 'E' | 'S' | 'W' => {
+                            sources.push(Cell::new(x, y, direction));
+                        },
+                        'n' | 'e' | 's' | 'w' => {
+                            destinations.push(Cell::new(x, y, direction));
+                        },
+                        _ => panic!("Unexpected character [{}]", symbol)
+                    }
+                }
+                x += 1;
+            }
+            y += 1;
+        }
+
+        let mut out = City{ id: 0, width, height, roads, sources: vec![], destinations: vec![]};
+
+        for source in sources {
+            let index = out.get_index(&source);
+            out.sources.push(index);
+        }
+        for destination in destinations {
+            let index = out.get_index(&destination);
+            out.destinations.push(index);
+        }
+
+        out 
     }
 
     fn forward(&self, &Cell{ref x, ref y, ref d}: &Cell) -> Option<Cell> {

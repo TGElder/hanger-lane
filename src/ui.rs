@@ -21,22 +21,10 @@ impl UI {
     
     pub fn launch() {
 
-        const WIDTH: usize = 512;
-        const HEIGHT: usize = 512;
+        const WIDTH: usize = 12;
+        const HEIGHT: usize = 12;
 
-        let mut rng: Box<Rng> = Box::new(rand::thread_rng());
-        let mut sources = vec![];
-        let mut destinations = vec![];
-
-        for _ in 0..64 {
-            sources.push(rng.gen_range(0, WIDTH * HEIGHT * 4));
-        }
-
-        for _ in 0..64 {
-            destinations.push(rng.gen_range(0, WIDTH * HEIGHT * 4));
-        }
-
-        let city = City::with_all_roads(WIDTH, HEIGHT, sources, destinations);
+        let city = City::from_map_file(WIDTH, HEIGHT, String::from("roundabout.csv"));
         let city_version = Arc::new(RwLock::new(None));
 
         let mut city_publisher = Publisher::new(&city_version);
@@ -100,7 +88,7 @@ impl SimulationStep for SpawnVehicles {
         let mut traffic = state.traffic;
         let mut rng = state.rng;
         for source in self.city.sources.iter() {
-            if state.occupancy.is_free(*source) {
+            if rng.gen_range(0, 100000) == 0 && state.occupancy.is_free(*source) {
                 let destination_index = rng.gen_range(0, self.city.destinations.len());
                 let destination = self.city.destinations.get(destination_index).unwrap();
                 traffic.vehicles.push(Vehicle{ location: *source, destination: *destination, destination_index });
@@ -122,9 +110,6 @@ impl SimulationStep for RemoveVehicles {
         for vehicle in traffic.vehicles {
             if vehicle.location != vehicle.destination {
                 vehicles_next.push(vehicle.clone());
-            }
-            else {
-                occupancy.free(vehicle.location);
             }
         }
         traffic.vehicles = vehicles_next;
