@@ -6,6 +6,11 @@ struct MapCell {
     content: str,
 }
 
+impl MapCell {
+    fn parse(&self) -> MapSetupInstruction {
+    }
+}
+
 struct MapSetup {
     roads: Vec<Road>;
     sources: Vec<usize>,
@@ -13,11 +18,7 @@ struct MapSetup {
 }
 
 trait MapSetupInstruction {
-
-
-    fn setup
-
-
+    fn setup(map_setup: MapSetup) -> MapSetup;
 }
 
 struct CityMap {
