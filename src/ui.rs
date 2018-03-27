@@ -13,6 +13,7 @@ use rand::Rng;
 use simulation::*;
 use steps::lookahead_driver::LookaheadDriver;
 use steps::block_occupier::{VehicleFree, VehicleOccupy};
+use steps::delay::Delay;
 
 pub struct UI {
 }
@@ -75,8 +76,9 @@ fn setup_simulation(city: &Arc<City>) -> Simulation {
     ];
     let update_vehicles = Box::new(UpdateVehicles{updates: vehicle_updates});
     let remove_vehicles = Box::new(RemoveVehicles{});
+    let delay = Box::new(Delay::new(50));
 
-    Simulation{ steps: vec![add_vehicles, update_vehicles, remove_vehicles] }
+    Simulation{ steps: vec![add_vehicles, update_vehicles, remove_vehicles, delay] }
 }
 
 pub struct SpawnVehicles {
@@ -88,7 +90,7 @@ impl SimulationStep for SpawnVehicles {
         let mut traffic = state.traffic;
         let mut rng = state.rng;
         for source in self.city.sources.iter() {
-            if rng.gen_range(0, 100000) == 0 && state.occupancy.is_free(*source) {
+            if rng.gen_range(0, 3) == 0 && state.occupancy.is_free(*source) {
                 let destination_index = rng.gen_range(0, self.city.destinations.len());
                 let destination = self.city.destinations.get(destination_index).unwrap();
                 traffic.vehicles.push(Vehicle{ location: *source, destination: *destination, destination_index });
@@ -104,7 +106,7 @@ pub struct RemoveVehicles {
 impl SimulationStep for RemoveVehicles {
     fn step(&self, state: SimulationState) -> SimulationState {
         let mut traffic = state.traffic;
-        let mut occupancy = state.occupancy;
+        let occupancy = state.occupancy;
         let rng = state.rng;
         let mut vehicles_next = vec![];
         for vehicle in traffic.vehicles {

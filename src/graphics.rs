@@ -94,6 +94,7 @@ impl Graphics{
 fn render_traffic(city: &City, traffic: &Traffic, graphics: &mut GlGraphics, context: &Context) {
     use graphics::graphics::rectangle;
 
+    const VEHICLE_SIZE: f64 = 16.0;
     const COLOURS: [[f32; 4]; 64] = [
         [0.45, 0.11, 0.72, 1.0],
         [0.43, 0.44, 0.17, 1.0],
@@ -163,7 +164,7 @@ fn render_traffic(city: &City, traffic: &Traffic, graphics: &mut GlGraphics, con
 
     for vehicle in traffic.vehicles.iter() {
         let cell = city.get_cell(vehicle.location);
-        let square = rectangle::square(cell.x as f64 * 2.0, cell.y as f64 * 2.0, 2.0);
+        let square = rectangle::square(cell.x as f64 * VEHICLE_SIZE, cell.y as f64 * VEHICLE_SIZE, VEHICLE_SIZE);
         rectangle(COLOURS[vehicle.destination % 64], square, context.transform, graphics);
 
     }

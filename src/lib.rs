@@ -108,10 +108,9 @@ impl City {
         let mut sources = vec![];
         let mut destinations = vec![];
         let mut roads = vec![];
-        let mut x = 0;
         let mut y = 0;
         for line in contents.split("\n") {
-            x = 0;
+            let mut x = 0;
             for cell in line.split(",") {
                 for symbol in cell.chars() {
                     let direction = match symbol {

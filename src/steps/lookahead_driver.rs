@@ -47,26 +47,28 @@ impl VehicleUpdate for LookaheadDriver {
     fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, rng: &mut Box<Rng>) {
         let costs = &self.costs[vehicle.destination_index];
         let node = vehicle.location;
-        let mut paths = vec![vec![node]];
-        for i in 0..self.lookahead {
-            paths = self.extend_all(&mut paths, i + 1, &occupancy);
-        }
-        let lowest_cost = paths.iter()
-            .map(|p| costs[*p.last().unwrap()])
-            .min();
-        if let Some(lowest_cost) = lowest_cost {
-            if lowest_cost < costs[node] {
-                let candidates: Vec<Vec<usize>> = paths.into_iter()
-                    .filter(|p| costs[*p.last().unwrap()] == lowest_cost)
-                    .collect();
-                let shortest = candidates.iter()
-                    .map(|p| p.len())
-                    .min().unwrap();
-                let candidates: Vec<usize> = candidates.into_iter()
-                    .filter(|p| p.len() == shortest)
-                    .map(|p| p[1])
-                    .collect();
-                vehicle.location = *rng.choose(&candidates).unwrap();
+        if let Some(current_cost) = costs[node] {
+            let mut paths = vec![vec![node]];
+            for i in 0..self.lookahead {
+                paths = self.extend_all(&mut paths, i + 1, &occupancy);
+            }
+            let lowest_cost = paths.iter()
+                .filter_map(|p| costs[*p.last().unwrap()])
+                .min();
+            if let Some(lowest_cost) = lowest_cost {
+                if lowest_cost < current_cost {
+                    let candidates: Vec<Vec<usize>> = paths.into_iter()
+                        .filter(|p| costs[*p.last().unwrap()] == Some(lowest_cost))
+                        .collect();
+                    let shortest = candidates.iter()
+                        .map(|p| p.len())
+                        .min().unwrap();
+                    let candidates: Vec<usize> = candidates.into_iter()
+                        .filter(|p| p.len() == shortest)
+                        .map(|p| p[1])
+                        .collect();
+                    vehicle.location = *rng.choose(&candidates).unwrap();
+                }
             }
         }
     }
@@ -230,6 +232,50 @@ mod tests {
         assert!(vehicle.location == 9 || vehicle.location == 14);
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         assert!(vehicle.location == 13);
+    }
+
+    #[test]
+    fn should_not_go_onto_nodes_with_no_route_to_destination() {
+        let edges = vec![
+            Edge::new(1, 0, 1),
+            Edge::new(1, 2, 1),
+            Edge::new(1, 4, 1),
+            Edge::new(4, 3, 1),
+            Edge::new(4, 5, 1),
+            Edge::new(4, 7, 1)];
+        let network = Network::new(8, &edges);
+        let costs = vec![network.dijkstra(vec![7])];
+        let driver = LookaheadDriver::new(3, network, costs);
+        let mut vehicle = Vehicle{ location: 1, destination: 7, destination_index: 0 };
+        let mut occupancy = Occupancy::new(16);
+        let mut rng: Box<Rng> = Box::new(rand::thread_rng());
+
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 4);
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 7);
+    }
+
+    #[test]
+    fn should_not_go_onto_nodes_with_no_route_to_destination_even_with_obstruction() {
+        let edges = vec![
+            Edge::new(1, 0, 1),
+            Edge::new(1, 2, 1),
+            Edge::new(1, 4, 1),
+            Edge::new(4, 3, 1),
+            Edge::new(4, 5, 1),
+            Edge::new(4, 7, 1)];
+        let network = Network::new(8, &edges);
+        let costs = vec![network.dijkstra(vec![7])];
+        let driver = LookaheadDriver::new(3, network, costs);
+        let mut vehicle = Vehicle{ location: 1, destination: 7, destination_index: 0 };
+        let mut occupancy = Occupancy::new(16);
+        let mut rng: Box<Rng> = Box::new(rand::thread_rng());
+
+        occupancy.occupy(4);
+
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 1);
     }
 
 }
