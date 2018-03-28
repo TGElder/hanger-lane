@@ -165,7 +165,8 @@ impl City {
 #[cfg(test)]
 mod tests {
 
-    use {Cell, Road, City, Direction, DIRECTIONS};
+    use {Cell, Direction, DIRECTIONS};
+    use city::{Road, City};
     use network::Edge;
     use hamcrest::prelude::*;
 

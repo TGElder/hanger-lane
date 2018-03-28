@@ -3,6 +3,7 @@ extern crate network;
 #[cfg(test)] #[macro_use] extern crate hamcrest;
 
 mod city;
+mod city_map;
 mod version;
 mod simulation;
 mod occupancy;
