@@ -1,6 +1,4 @@
-use std::fs::File;
-use std::io::prelude::*;
-use {Cell, Direction, DIRECTIONS};
+use {Cell, Direction, DIRECTIONS, get_opposite};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Road {
@@ -29,9 +27,9 @@ impl Road {
 #[derive(Clone, Debug)]
 pub struct City {
     id: usize,
-    width: usize,
-    height: usize,
-    roads: Vec<Road>,
+    pub width: usize,
+    pub height: usize,
+    pub roads: Vec<Road>,
     pub sources: Vec<usize>,
     pub destinations: Vec<usize>,
 }
@@ -43,12 +41,12 @@ impl City {
         City{ id: 0, width, height, roads: vec![], sources, destinations }
     }
 
-    pub fn with_all_roads(width: usize, height: usize, sources: Vec<usize>, destinations: Vec<usize>) -> City {
+    pub fn _with_all_roads(width: usize, height: usize, sources: Vec<usize>, destinations: Vec<usize>) -> City {
 
         let mut roads = Vec::with_capacity((width * height * 12));
 
         for exit in DIRECTIONS.iter() {
-            for (_, entry) in DIRECTIONS.iter().enumerate().filter(|&(i, _)| *exit != DIRECTIONS[(i + 2) % 4]) {
+            for entry in DIRECTIONS.iter().filter(|d| *exit != get_opposite(*d)) {
                 for y in 0..height {
                     for x in 0..width {
                         roads.push(Road::new(x, y, *entry, *exit));
@@ -58,60 +56,6 @@ impl City {
         }
 
         City { id: 0, width, height, roads, sources, destinations }
-    }
-
-    pub fn from_map_file(width: usize, height: usize, file: String) -> City {
-        let mut f = File::open(file).expect("File not found");
-        let mut contents = String::new();
-        f.read_to_string(&mut contents).expect("Failed to read file");
-
-        let mut sources = vec![];
-        let mut destinations = vec![];
-        let mut roads = vec![];
-        let mut y = 0;
-        for line in contents.split("\n") {
-            let mut x = 0;
-            for cell in line.split(",") {
-                for symbol in cell.chars() {
-                    let direction = match symbol {
-                        '^' | 'N' | 'n' => Direction::North,
-                        '>' | 'E' | 'e' => Direction::East,
-                        'v' | 'S' | 's' => Direction::South,
-                        '<' | 'W' | 'w' => Direction::West,
-                        _ => panic!("Unexpected character [{}]", symbol)
-                    };
-                    match symbol {
-                        '^' | '>' | 'v' | '<' => {
-                            for entry in DIRECTIONS.iter() {
-                                roads.push(Road::new(x, y, *entry, direction));
-                            }
-                        },
-                        'N' | 'E' | 'S' | 'W' => {
-                            sources.push(Cell::new(x, y, direction));
-                        },
-                        'n' | 'e' | 's' | 'w' => {
-                            destinations.push(Cell::new(x, y, direction));
-                        },
-                        _ => panic!("Unexpected character [{}]", symbol)
-                    }
-                }
-                x += 1;
-            }
-            y += 1;
-        }
-
-        let mut out = City{ id: 0, width, height, roads, sources: vec![], destinations: vec![]};
-
-        for source in sources {
-            let index = out.get_index(&source);
-            out.sources.push(index);
-        }
-        for destination in destinations {
-            let index = out.get_index(&destination);
-            out.destinations.push(index);
-        }
-
-        out 
     }
 
     fn forward(&self, &Cell{ref x, ref y, ref d}: &Cell) -> Option<Cell> {

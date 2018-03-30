@@ -21,6 +21,15 @@ pub enum Direction {
     West
 }
 
+fn get_opposite(direction: &Direction) -> Direction {
+    match direction {
+        &Direction::North => Direction::South,
+        &Direction::East => Direction::West,
+        &Direction::South => Direction::North,
+        &Direction::West => Direction::East,
+    }
+}
+
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cell {

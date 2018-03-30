@@ -15,6 +15,9 @@ use simulation::*;
 use steps::lookahead_driver::LookaheadDriver;
 use steps::block_occupier::{VehicleFree, VehicleOccupy};
 use steps::delay::Delay;
+use std::fs::File;
+use std::io::prelude::*;
+use city_map::create_city;
 
 pub struct UI {
 }
@@ -23,10 +26,10 @@ impl UI {
     
     pub fn launch() {
 
-        const WIDTH: usize = 12;
-        const HEIGHT: usize = 12;
-
-        let city = City::from_map_file(WIDTH, HEIGHT, String::from("roundabout.csv"));
+        let mut f = File::open("roundabout.csv").expect("File not found");
+        let mut contents = String::new();
+        f.read_to_string(&mut contents).expect("Failed to read file");
+        let city = create_city(&contents);
         let city_version = Arc::new(RwLock::new(None));
 
         let mut city_publisher = Publisher::new(&city_version);
