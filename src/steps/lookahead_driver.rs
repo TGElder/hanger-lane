@@ -86,15 +86,15 @@ mod tests {
     use occupancy::Occupancy;
     use rand::Rng;
 
-    fn get_test_driver(lookahead: usize, destination: usize) -> LookaheadDriver {
+    fn get_test_driver(lookahead: usize, destination: Vec<usize>) -> LookaheadDriver {
         let edges = Edge::create_grid(4, 4, 1, Edge::create_4_neighbour_deltas());
         let network = Network::new(16, &edges);
-        let costs = vec![network.dijkstra(vec![destination])];
+        let costs = vec![network.dijkstra(destination)];
         LookaheadDriver::new(lookahead, network, costs)
     }
 
-    fn init(lookahead: usize, vehicle: usize, destination: usize) -> (LookaheadDriver, Vehicle, Occupancy, Box<Rng>) {
-        let driver = get_test_driver(lookahead, destination);
+    fn init(lookahead: usize, vehicle: usize, destination: Vec<usize>) -> (LookaheadDriver, Vehicle, Occupancy, Box<Rng>) {
+        let driver = get_test_driver(lookahead, destination.clone());
         let vehicle = Vehicle{ location: vehicle, destination, destination_index: 0 };
         let occupancy = Occupancy::new(16);
         let rng: Box<Rng> = Box::new(rand::thread_rng());
@@ -103,7 +103,7 @@ mod tests {
     
     #[test]
     fn no_obstructions() {
-        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, 13);
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, vec![13]);
 
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         assert!(vehicle.location == 5);
@@ -111,7 +111,7 @@ mod tests {
 
     #[test]
     fn lookahead_required_for_obstruction() {
-        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, 13);
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, vec![13]);
 
         occupancy.occupy(4);
         occupancy.occupy(5);
@@ -120,8 +120,16 @@ mod tests {
     }
 
     #[test]
+    fn multiple_destinations_no_obstructions() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, vec![12, 13, 14, 15]);
+
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 5);
+    }
+
+    #[test]
     fn lookahead_not_enough_for_obstruction() {
-        let (driver, mut vehicle, mut occupancy, mut rng) = init(2, 1, 13);
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(2, 1, vec![13]);
 
         occupancy.occupy(4);
         occupancy.occupy(5);
@@ -131,7 +139,7 @@ mod tests {
 
     #[test]
     fn full_lookahead_not_required_for_obstruction() {
-        let (driver, mut vehicle, mut occupancy, mut rng) = init(4, 1, 13);
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(4, 1, vec![13]);
 
         occupancy.occupy(4);
         occupancy.occupy(5);
@@ -141,7 +149,7 @@ mod tests {
     
     #[test]
     fn no_route() {
-        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, 13);
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, vec![13]);
 
         occupancy.occupy(4);
         occupancy.occupy(5);
@@ -153,7 +161,7 @@ mod tests {
 
     #[test]
     fn two_routes_a() {
-        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, 13);
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, vec![13]);
 
         occupancy.occupy(5);
         occupancy.occupy(6);
@@ -163,7 +171,7 @@ mod tests {
 
     #[test]
     fn two_routes_b() {
-        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 2, 13);
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 2, vec![13]);
 
         occupancy.occupy(5);
         occupancy.occupy(6);
@@ -173,7 +181,7 @@ mod tests {
 
     #[test]
     fn two_routes_c() {
-        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 2, 14);
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 2, vec![14]);
 
         occupancy.occupy(5);
         occupancy.occupy(6);
@@ -183,7 +191,7 @@ mod tests {
     
     #[test]
     fn adjacent_to_goal() {
-        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, 1);
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, vec![1]);
 
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         println!("###{}", vehicle.location);
@@ -192,7 +200,7 @@ mod tests {
 
     #[test]
     fn on_goal() {
-        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, 0);
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, vec![0]);
 
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         assert!(vehicle.location == 0);
@@ -200,7 +208,7 @@ mod tests {
 
     #[test]
     fn goal_blocked() {
-        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, 1);
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, vec![1]);
 
         occupancy.occupy(1);
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
@@ -208,8 +216,16 @@ mod tests {
     }
 
     #[test]
+    fn on_goal_adjacent_to_another_goal() {
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, vec![0, 1]);
+
+        driver.update(&mut vehicle, &mut occupancy, &mut rng);
+        assert!(vehicle.location == 0);
+    }
+
+    #[test]
     fn position_blocked() {
-        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, 1);
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, vec![1]);
 
         occupancy.occupy(0);
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
@@ -218,7 +234,7 @@ mod tests {
 
     #[test]
     fn all_the_way() {
-        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, 13);
+        let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, vec![13]);
 
         occupancy.occupy(4);
         occupancy.occupy(5);
@@ -246,7 +262,7 @@ mod tests {
         let network = Network::new(8, &edges);
         let costs = vec![network.dijkstra(vec![7])];
         let driver = LookaheadDriver::new(3, network, costs);
-        let mut vehicle = Vehicle{ location: 1, destination: 7, destination_index: 0 };
+        let mut vehicle = Vehicle{ location: 1, destination: vec![7], destination_index: 0 };
         let mut occupancy = Occupancy::new(16);
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
 
@@ -268,7 +284,7 @@ mod tests {
         let network = Network::new(8, &edges);
         let costs = vec![network.dijkstra(vec![7])];
         let driver = LookaheadDriver::new(3, network, costs);
-        let mut vehicle = Vehicle{ location: 1, destination: 7, destination_index: 0 };
+        let mut vehicle = Vehicle{ location: 1, destination: vec![7], destination_index: 0 };
         let mut occupancy = Occupancy::new(16);
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
 

@@ -49,7 +49,7 @@ impl Cell {
 #[derive(Clone, Debug)]
 pub struct Vehicle {
     location: usize,
-    destination: usize,
+    destination: Vec<usize>,
     destination_index: usize,
 }
 

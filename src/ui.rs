@@ -70,7 +70,7 @@ fn setup_simulation(city: &Arc<City>) -> Simulation {
     let network = Network::new(city.get_num_nodes(), &city.create_edges());
     let mut costs = Vec::with_capacity(city.destinations.len());
     for destination in city.destinations.iter() {
-        costs.push(network.dijkstra(vec![*destination]));
+        costs.push(network.dijkstra(destination.clone()));
     }
     let add_vehicles = Box::new(SpawnVehicles{city: Arc::clone(&city)});
     let vehicle_updates: Vec<Box<VehicleUpdate>> = vec![
@@ -92,15 +92,23 @@ pub struct SpawnVehicles {
 impl SimulationStep for SpawnVehicles {
     fn step(&self, state: SimulationState) -> SimulationState {
         let mut traffic = state.traffic;
+        let occupancy = state.occupancy;
         let mut rng = state.rng;
         for source in self.city.sources.iter() {
-            if rng.gen_range(0, 3) == 0 && state.occupancy.is_free(*source) {
-                let destination_index = rng.gen_range(0, self.city.destinations.len());
-                let destination = self.city.destinations.get(destination_index).unwrap();
-                traffic.vehicles.push(Vehicle{ location: *source, destination: *destination, destination_index });
+            if rng.gen_range(0, 3) == 0 {
+                let candidates: Vec<usize> = source.iter()
+                   .cloned()
+                   .filter(|s| occupancy.is_free(*s))
+                   .collect();
+                if candidates.len() > 0 {
+                    let location = rng.choose(&candidates).unwrap();
+                    let destination_index = rng.gen_range(0, self.city.destinations.len());
+                    let destination = self.city.destinations.get(destination_index).unwrap().clone();
+                    traffic.vehicles.push(Vehicle{ location: *location, destination, destination_index });
+                }
             }
         }
-        SimulationState{traffic, rng, ..state}
+        SimulationState{traffic, occupancy, rng}
     }
 }
 
@@ -114,7 +122,7 @@ impl SimulationStep for RemoveVehicles {
         let rng = state.rng;
         let mut vehicles_next = vec![];
         for vehicle in traffic.vehicles {
-            if vehicle.location != vehicle.destination {
+            if !vehicle.destination.contains(&vehicle.location) {
                 vehicles_next.push(vehicle.clone());
             }
         }

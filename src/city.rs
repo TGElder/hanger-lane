@@ -30,18 +30,18 @@ pub struct City {
     pub width: usize,
     pub height: usize,
     pub roads: Vec<Road>,
-    pub sources: Vec<usize>,
-    pub destinations: Vec<usize>,
+    pub sources: Vec<Vec<usize>>,
+    pub destinations: Vec<Vec<usize>>,
 }
 
 use network::Edge;
 
 impl City {
-    pub fn new(width: usize, height: usize, sources: Vec<usize>, destinations: Vec<usize>) -> City {
-        City{ id: 0, width, height, roads: vec![], sources, destinations }
+    pub fn new(width: usize, height: usize) -> City {
+        City{ id: 0, width, height, roads: vec![], sources: vec![], destinations: vec![] }
     }
 
-    pub fn _with_all_roads(width: usize, height: usize, sources: Vec<usize>, destinations: Vec<usize>) -> City {
+    pub fn _with_all_roads(width: usize, height: usize) -> City {
 
         let mut roads = Vec::with_capacity((width * height * 12));
 
@@ -55,7 +55,7 @@ impl City {
             }
         }
 
-        City { id: 0, width, height, roads, sources, destinations }
+        City { id: 0, width, height, roads, sources: vec![], destinations: vec![] }
     }
 
     fn forward(&self, &Cell{ref x, ref y, ref d}: &Cell) -> Option<Cell> {
@@ -116,7 +116,7 @@ mod tests {
 
     #[test]
     fn test_forward() {
-        let city = City::new(3, 3, vec![], vec![]);
+        let city = City::new(3, 3);
 
         assert!(city.forward(&Cell{x: 0, y: 1, d: Direction::North}) == Some(Cell{x: 0, y: 0, d: Direction::North}));
         assert!(city.forward(&Cell{x: 0, y: 0, d: Direction::North}) == None);
@@ -130,7 +130,7 @@ mod tests {
 
     #[test]
     fn test_get_index_get_cell() {
-        let city = City::new(5, 3, vec![], vec![]);
+        let city = City::new(5, 3);
 
         let mut cells = Vec::with_capacity((city.width * city.height * 4));
 
@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     fn test_create_edges() {
-        let mut city = City::new(3, 3, vec![], vec![]);
+        let mut city = City::new(3, 3);
 
         city.roads = vec![
             Road::new(1, 0, Direction::North, Direction::East),
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn test_with_all_roads() {
-        let city = City::with_all_roads(1, 1, vec![], vec![]);
+        let city = City::_with_all_roads(1, 1);
 
         let expected = vec![
             Road::new(0, 0, Direction::North, Direction::East),
@@ -192,7 +192,7 @@ mod tests {
 
         assert_that!(&city.roads.iter().collect(), contains(expected.iter().collect()).exactly());
         
-        let city = City::with_all_roads(5, 3, vec![], vec![]);
+        let city = City::_with_all_roads(5, 3);
 
         assert_that!(city.roads.len(), is(equal_to(180)));
     }

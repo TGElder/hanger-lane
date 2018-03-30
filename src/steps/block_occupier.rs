@@ -35,7 +35,7 @@ impl VehicleOccupy {
 
 impl VehicleUpdate for VehicleOccupy {
     fn update(&self, vehicle: &mut Vehicle, occupancy: &mut Occupancy, _rng: &mut Box<Rng>) {
-        if &vehicle.location != &vehicle.destination {
+        if !vehicle.destination.contains(&vehicle.location) {
             let start = self.block_size * (vehicle.location / self.block_size);
 
             for offset in 0..self.block_size {
@@ -60,7 +60,7 @@ mod tests {
     fn free_then_occupy_start_of_range() {
         let free = VehicleFree::new(3);
         let occupy = VehicleOccupy::new(3);
-        let mut vehicle = Vehicle{ location: 0, destination: 1, destination_index: 0 };
+        let mut vehicle = Vehicle{ location: 0, destination: vec![1], destination_index: 0 };
         let mut occupancy = Occupancy::new(9);
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
         free.update(&mut vehicle, &mut occupancy, &mut rng);
@@ -74,7 +74,7 @@ mod tests {
     fn free_then_occupy_mid_range() {
         let free = VehicleFree::new(4);
         let occupy = VehicleOccupy::new(4);
-        let mut vehicle = Vehicle{ location: 5, destination: 6, destination_index: 0 };
+        let mut vehicle = Vehicle{ location: 5, destination: vec![6], destination_index: 0 };
         let mut occupancy = Occupancy::new(12);
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
         free.update(&mut vehicle, &mut occupancy, &mut rng);
@@ -89,7 +89,7 @@ mod tests {
     fn free_then_occupy_end_of_range() {
         let free = VehicleFree::new(5);
         let occupy = VehicleOccupy::new(5);
-        let mut vehicle = Vehicle{ location: 10, destination: 11, destination_index: 0 };
+        let mut vehicle = Vehicle{ location: 10, destination: vec![11], destination_index: 0 };
         let mut occupancy = Occupancy::new(15);
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
         free.update(&mut vehicle, &mut occupancy, &mut rng);
@@ -105,7 +105,7 @@ mod tests {
     fn occupy_then_free_start_of_range() {
         let free = VehicleFree::new(3);
         let occupy = VehicleOccupy::new(3);
-        let mut vehicle = Vehicle{ location: 0, destination: 1, destination_index: 0 };
+        let mut vehicle = Vehicle{ location: 0, destination: vec![1], destination_index: 0 };
         let mut occupancy = Occupancy::new(9);
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
         occupy.update(&mut vehicle, &mut occupancy, &mut rng);
@@ -119,7 +119,7 @@ mod tests {
     fn occupy_then_free_mid_range() {
         let free = VehicleFree::new(4);
         let occupy = VehicleOccupy::new(4);
-        let mut vehicle = Vehicle{ location: 5, destination: 6, destination_index: 0 };
+        let mut vehicle = Vehicle{ location: 5, destination: vec![6], destination_index: 0 };
         let mut occupancy = Occupancy::new(12);
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
         occupy.update(&mut vehicle, &mut occupancy, &mut rng);
@@ -134,7 +134,7 @@ mod tests {
     fn occupy_then_free_end_of_range() {
         let free = VehicleFree::new(5);
         let occupy = VehicleOccupy::new(5);
-        let mut vehicle = Vehicle{ location: 10, destination: 11, destination_index: 0 };
+        let mut vehicle = Vehicle{ location: 10, destination: vec![11], destination_index: 0 };
         let mut occupancy = Occupancy::new(15);
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
         occupy.update(&mut vehicle, &mut occupancy, &mut rng);
@@ -150,7 +150,7 @@ mod tests {
     fn should_not_occupy_destination() {
         let free = VehicleFree::new(3);
         let occupy = VehicleOccupy::new(3);
-        let mut vehicle = Vehicle{ location: 0, destination: 0, destination_index: 0 };
+        let mut vehicle = Vehicle{ location: 0, destination: vec![0, 1], destination_index: 0 };
         let mut occupancy = Occupancy::new(9);
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
         free.update(&mut vehicle, &mut occupancy, &mut rng);
