@@ -26,7 +26,7 @@ impl UI {
     
     pub fn launch() {
 
-        let mut f = File::open("roundabout.csv").expect("File not found");
+        let mut f = File::open("hanger-lane-ffa.csv").expect("File not found");
         let mut contents = String::new();
         f.read_to_string(&mut contents).expect("Failed to read file");
         let city = create_city(&contents);
@@ -75,7 +75,7 @@ fn setup_simulation(city: &Arc<City>) -> Simulation {
     let add_vehicles = Box::new(SpawnVehicles{city: Arc::clone(&city)});
     let vehicle_updates: Vec<Box<VehicleUpdate>> = vec![
         Box::new(VehicleFree::new(4)),
-        Box::new(LookaheadDriver::new(2, network, costs)),
+        Box::new(LookaheadDriver::new(3, network, costs)),
         Box::new(VehicleOccupy::new(4)),
     ];
     let update_vehicles = Box::new(UpdateVehicles{updates: vehicle_updates});
@@ -95,7 +95,7 @@ impl SimulationStep for SpawnVehicles {
         let occupancy = state.occupancy;
         let mut rng = state.rng;
         for source in self.city.sources.iter() {
-            if rng.gen_range(0, 3) == 0 {
+            if rng.gen_range(0, 8) == 0 {
                 let candidates: Vec<usize> = source.iter()
                    .cloned()
                    .filter(|s| occupancy.is_free(*s))

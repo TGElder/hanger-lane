@@ -95,7 +95,7 @@ impl Graphics{
 fn render_traffic(city: &City, traffic: &Traffic, graphics: &mut GlGraphics, context: &Context) {
     use graphics::graphics::rectangle;
 
-    const VEHICLE_SIZE: f64 = 64.0;
+    const VEHICLE_SIZE: f64 = 16.0;
     const COLOURS: [[f32; 4]; 64] = [
         [0.45, 0.11, 0.72, 1.0],
         [0.43, 0.44, 0.17, 1.0],
