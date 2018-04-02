@@ -86,7 +86,7 @@ fn setup_simulation(city: &Arc<City>, occupancy: &mut Occupancy) -> Simulation {
 
     if city.lights.len() > 0 {
         let traffic_lights = Box::new(TrafficLights::new(city.lights.clone(),
-            RefCell::new(Box::new(CounterTimer::new(vec![15, 100]))),
+            RefCell::new(Box::new(CounterTimer::new(vec![8, 50]))),
             occupancy));
         Simulation{ steps: vec![traffic_lights, add_vehicles, update_vehicles, remove_vehicles, delay] }
     }
@@ -106,7 +106,7 @@ impl SimulationStep for SpawnVehicles {
         let mut occupancy = state.occupancy;
         let mut rng = state.rng;
         for source in self.city.sources.iter() {
-            if rng.gen_range(0, 10) == 0 {
+            if rng.gen_range(0, 8) == 0 {
                 let candidates: Vec<usize> = source.iter()
                    .cloned()
                    .filter(|s| occupancy.is_unlocked(*s))
