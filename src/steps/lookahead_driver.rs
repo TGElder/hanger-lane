@@ -19,7 +19,7 @@ impl LookaheadDriver {
     fn extend(&self, path: &Vec<usize>, occupancy: &Occupancy) -> Vec<Vec<usize>> {
         let neighbours: Vec<usize> = self.network.get_out(*path.last().unwrap()).iter().map(|n| n.to).collect();
         let free_neighbours: Vec<usize> = neighbours.into_iter()
-            .filter(|n| { occupancy.is_free(*n) && !path.contains(n) })
+            .filter(|n| { occupancy.is_unlocked(*n) && !path.contains(n) })
             .collect();
         let mut out = vec![];
         for neighbour in free_neighbours {
@@ -113,8 +113,8 @@ mod tests {
     fn lookahead_required_for_obstruction() {
         let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, vec![13]);
 
-        occupancy.occupy(4);
-        occupancy.occupy(5);
+        occupancy.lock(4);
+        occupancy.lock(5);
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         assert!(vehicle.location == 2);
     }
@@ -131,8 +131,8 @@ mod tests {
     fn lookahead_not_enough_for_obstruction() {
         let (driver, mut vehicle, mut occupancy, mut rng) = init(2, 1, vec![13]);
 
-        occupancy.occupy(4);
-        occupancy.occupy(5);
+        occupancy.lock(4);
+        occupancy.lock(5);
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         assert!(vehicle.location == 1);
     }
@@ -141,8 +141,8 @@ mod tests {
     fn full_lookahead_not_required_for_obstruction() {
         let (driver, mut vehicle, mut occupancy, mut rng) = init(4, 1, vec![13]);
 
-        occupancy.occupy(4);
-        occupancy.occupy(5);
+        occupancy.lock(4);
+        occupancy.lock(5);
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         assert!(vehicle.location == 2);
     }
@@ -151,10 +151,10 @@ mod tests {
     fn no_route() {
         let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, vec![13]);
 
-        occupancy.occupy(4);
-        occupancy.occupy(5);
-        occupancy.occupy(6);
-        occupancy.occupy(7);
+        occupancy.lock(4);
+        occupancy.lock(5);
+        occupancy.lock(6);
+        occupancy.lock(7);
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         assert!(vehicle.location == 1);
     }
@@ -163,8 +163,8 @@ mod tests {
     fn two_routes_a() {
         let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, vec![13]);
 
-        occupancy.occupy(5);
-        occupancy.occupy(6);
+        occupancy.lock(5);
+        occupancy.lock(6);
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         assert!(vehicle.location == 0);
     }
@@ -173,8 +173,8 @@ mod tests {
     fn two_routes_b() {
         let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 2, vec![13]);
 
-        occupancy.occupy(5);
-        occupancy.occupy(6);
+        occupancy.lock(5);
+        occupancy.lock(6);
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         assert!(vehicle.location == 1 || vehicle.location == 3);
     }
@@ -183,8 +183,8 @@ mod tests {
     fn two_routes_c() {
         let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 2, vec![14]);
 
-        occupancy.occupy(5);
-        occupancy.occupy(6);
+        occupancy.lock(5);
+        occupancy.lock(6);
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         assert!(vehicle.location == 3);
     }
@@ -210,7 +210,7 @@ mod tests {
     fn goal_blocked() {
         let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, vec![1]);
 
-        occupancy.occupy(1);
+        occupancy.lock(1);
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         assert!(vehicle.location == 0);
     }
@@ -227,7 +227,7 @@ mod tests {
     fn position_blocked() {
         let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 0, vec![1]);
 
-        occupancy.occupy(0);
+        occupancy.lock(0);
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         assert!(vehicle.location == 1);
     }
@@ -236,8 +236,8 @@ mod tests {
     fn all_the_way() {
         let (driver, mut vehicle, mut occupancy, mut rng) = init(3, 1, vec![13]);
 
-        occupancy.occupy(4);
-        occupancy.occupy(5);
+        occupancy.lock(4);
+        occupancy.lock(5);
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         assert!(vehicle.location == 2);
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
@@ -288,7 +288,7 @@ mod tests {
         let mut occupancy = Occupancy::new(16);
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
 
-        occupancy.occupy(4);
+        occupancy.lock(4);
 
         driver.update(&mut vehicle, &mut occupancy, &mut rng);
         assert!(vehicle.location == 1);

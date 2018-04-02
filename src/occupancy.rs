@@ -1,29 +1,32 @@
 #[derive(Clone)]
 pub struct Occupancy {
-    occupancy: Vec<bool>,
+    occupancy: Vec<usize>,
 }
 
 impl Occupancy {
 
     pub fn new(node_count: usize) -> Occupancy {
-        let occupancy = vec![false; node_count];
+        let occupancy = vec![0; node_count];
         Occupancy{ occupancy }
     }
     
-    pub fn is_free(&self, index: usize) -> bool {
-        !self.occupancy[index]
+    pub fn is_unlocked(&self, index: usize) -> bool {
+        self.occupancy[index] == 0
     }
 
-    fn set(&mut self, index: usize, value: bool) {
-        self.occupancy[index] = value;
+    pub fn remove_all_locks(&mut self, index: usize) {
+        self.occupancy[index] = 0;
     }
 
-    pub fn free(&mut self, index: usize) {
-        self.set(index, false);
+    pub fn unlock(&mut self, index: usize) {
+        if self.occupancy[index] == 0 {
+            panic!("No locks left to remove");
+        }
+        self.occupancy[index] -= 1;
     }
 
-    pub fn occupy(&mut self, index: usize) {
-        self.set(index, true);
+    pub fn lock(&mut self, index: usize) {
+        self.occupancy[index] += 1;
     }
 
 }
@@ -34,19 +37,49 @@ mod tests {
     use occupancy::Occupancy;
 
     #[test]
-    fn free_then_occupy() {
+    fn remove_all_locks() {
         let mut occupancy = Occupancy::new(10);
-        occupancy.free(7);
-        occupancy.occupy(7);
-        assert!(!occupancy.is_free(7));
+        occupancy.remove_all_locks(7);
+        assert!(occupancy.is_unlocked(7));
     }
 
     #[test]
-    fn occupy_then_free() {
+    fn lock() {
         let mut occupancy = Occupancy::new(10);
-        occupancy.occupy(7);
-        occupancy.free(7);
-        assert!(occupancy.is_free(7));
+        occupancy.remove_all_locks(7);
+        occupancy.lock(7);
+        assert!(!occupancy.is_unlocked(7));
+    }
+
+    #[test]
+    fn lock_then_unlock() {
+        let mut occupancy = Occupancy::new(10);
+        occupancy.remove_all_locks(7);
+        occupancy.lock(7);
+        occupancy.unlock(7);
+        assert!(occupancy.is_unlocked(7));
+    }
+    
+    #[test]
+    fn double_lock() {
+        let mut occupancy = Occupancy::new(10);
+        let mut occupancy = Occupancy::new(10);
+        occupancy.remove_all_locks(7);
+        occupancy.lock(7);
+        occupancy.lock(7);
+        assert!(!occupancy.is_unlocked(7));
+        occupancy.unlock(7);
+        assert!(!occupancy.is_unlocked(7));
+        occupancy.unlock(7);
+        assert!(occupancy.is_unlocked(7));
+    }
+
+    #[test]
+    #[should_panic]
+    fn remove_too_many_locks() {
+        let mut occupancy = Occupancy::new(10);
+        occupancy.remove_all_locks(7);
+        occupancy.unlock(7);
     }
 
 }

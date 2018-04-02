@@ -18,7 +18,7 @@ impl VehicleUpdate for VehicleFree {
         let start = self.block_size * (vehicle.location / self.block_size);
 
         for offset in 0..self.block_size {
-            occupancy.free(start + offset);
+            occupancy.unlock(start + offset);
         }
     }
 }
@@ -39,7 +39,7 @@ impl VehicleUpdate for VehicleOccupy {
             let start = self.block_size * (vehicle.location / self.block_size);
 
             for offset in 0..self.block_size {
-                occupancy.occupy(start + offset);
+                occupancy.lock(start + offset);
             }
         }
     }
@@ -62,12 +62,12 @@ mod tests {
         let occupy = VehicleOccupy::new(3);
         let mut vehicle = Vehicle{ location: 0, destination: vec![1], destination_index: 0 };
         let mut occupancy = Occupancy::new(9);
+        occupancy.remove_all_locks(0);
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
-        free.update(&mut vehicle, &mut occupancy, &mut rng);
         occupy.update(&mut vehicle, &mut occupancy, &mut rng);
-        assert!(!occupancy.is_free(0));
-        assert!(!occupancy.is_free(1));
-        assert!(!occupancy.is_free(2));
+        assert!(!occupancy.is_unlocked(0));
+        assert!(!occupancy.is_unlocked(1));
+        assert!(!occupancy.is_unlocked(2));
     }
 
     #[test]
@@ -76,13 +76,13 @@ mod tests {
         let occupy = VehicleOccupy::new(4);
         let mut vehicle = Vehicle{ location: 5, destination: vec![6], destination_index: 0 };
         let mut occupancy = Occupancy::new(12);
+        occupancy.remove_all_locks(0);
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
-        free.update(&mut vehicle, &mut occupancy, &mut rng);
         occupy.update(&mut vehicle, &mut occupancy, &mut rng);
-        assert!(!occupancy.is_free(4));
-        assert!(!occupancy.is_free(5));
-        assert!(!occupancy.is_free(6));
-        assert!(!occupancy.is_free(7));
+        assert!(!occupancy.is_unlocked(4));
+        assert!(!occupancy.is_unlocked(5));
+        assert!(!occupancy.is_unlocked(6));
+        assert!(!occupancy.is_unlocked(7));
     }
 
     #[test]
@@ -91,14 +91,14 @@ mod tests {
         let occupy = VehicleOccupy::new(5);
         let mut vehicle = Vehicle{ location: 10, destination: vec![11], destination_index: 0 };
         let mut occupancy = Occupancy::new(15);
+        occupancy.remove_all_locks(0);
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
-        free.update(&mut vehicle, &mut occupancy, &mut rng);
         occupy.update(&mut vehicle, &mut occupancy, &mut rng);
-        assert!(!occupancy.is_free(10));
-        assert!(!occupancy.is_free(11));
-        assert!(!occupancy.is_free(12));
-        assert!(!occupancy.is_free(13));
-        assert!(!occupancy.is_free(14));
+        assert!(!occupancy.is_unlocked(10));
+        assert!(!occupancy.is_unlocked(11));
+        assert!(!occupancy.is_unlocked(12));
+        assert!(!occupancy.is_unlocked(13));
+        assert!(!occupancy.is_unlocked(14));
     }
 
     #[test]
@@ -110,9 +110,9 @@ mod tests {
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
         occupy.update(&mut vehicle, &mut occupancy, &mut rng);
         free.update(&mut vehicle, &mut occupancy, &mut rng);
-        assert!(occupancy.is_free(0));
-        assert!(occupancy.is_free(1));
-        assert!(occupancy.is_free(2));
+        assert!(occupancy.is_unlocked(0));
+        assert!(occupancy.is_unlocked(1));
+        assert!(occupancy.is_unlocked(2));
     }
 
     #[test]
@@ -124,10 +124,10 @@ mod tests {
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
         occupy.update(&mut vehicle, &mut occupancy, &mut rng);
         free.update(&mut vehicle, &mut occupancy, &mut rng);
-        assert!(occupancy.is_free(4));
-        assert!(occupancy.is_free(5));
-        assert!(occupancy.is_free(6));
-        assert!(occupancy.is_free(7));
+        assert!(occupancy.is_unlocked(4));
+        assert!(occupancy.is_unlocked(5));
+        assert!(occupancy.is_unlocked(6));
+        assert!(occupancy.is_unlocked(7));
     }
 
     #[test]
@@ -139,11 +139,11 @@ mod tests {
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
         occupy.update(&mut vehicle, &mut occupancy, &mut rng);
         free.update(&mut vehicle, &mut occupancy, &mut rng);
-        assert!(occupancy.is_free(10));
-        assert!(occupancy.is_free(11));
-        assert!(occupancy.is_free(12));
-        assert!(occupancy.is_free(13));
-        assert!(occupancy.is_free(14));
+        assert!(occupancy.is_unlocked(10));
+        assert!(occupancy.is_unlocked(11));
+        assert!(occupancy.is_unlocked(12));
+        assert!(occupancy.is_unlocked(13));
+        assert!(occupancy.is_unlocked(14));
     }
 
     #[test]
@@ -152,11 +152,11 @@ mod tests {
         let occupy = VehicleOccupy::new(3);
         let mut vehicle = Vehicle{ location: 0, destination: vec![0, 1], destination_index: 0 };
         let mut occupancy = Occupancy::new(9);
+        occupancy.remove_all_locks(0);
         let mut rng: Box<Rng> = Box::new(rand::thread_rng());
-        free.update(&mut vehicle, &mut occupancy, &mut rng);
         occupy.update(&mut vehicle, &mut occupancy, &mut rng);
-        assert!(occupancy.is_free(0));
-        assert!(occupancy.is_free(1));
-        assert!(occupancy.is_free(2));
+        assert!(occupancy.is_unlocked(0));
+        assert!(occupancy.is_unlocked(1));
+        assert!(occupancy.is_unlocked(2));
     }
 }

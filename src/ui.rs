@@ -72,7 +72,7 @@ fn setup_simulation(city: &Arc<City>) -> Simulation {
     for destination in city.destinations.iter() {
         costs.push(network.dijkstra(destination.clone()));
     }
-    let add_vehicles = Box::new(SpawnVehicles{city: Arc::clone(&city)});
+    let add_vehicles = Box::new(SpawnVehicles{city: Arc::clone(&city), block_size: 4});
     let vehicle_updates: Vec<Box<VehicleUpdate>> = vec![
         Box::new(VehicleFree::new(4)),
         Box::new(LookaheadDriver::new(3, network, costs)),
@@ -87,24 +87,29 @@ fn setup_simulation(city: &Arc<City>) -> Simulation {
 
 pub struct SpawnVehicles {
     city: Arc<City>,
+    block_size: usize,
 }
 
 impl SimulationStep for SpawnVehicles {
     fn step(&self, state: SimulationState) -> SimulationState {
         let mut traffic = state.traffic;
-        let occupancy = state.occupancy;
+        let mut occupancy = state.occupancy;
         let mut rng = state.rng;
         for source in self.city.sources.iter() {
             if rng.gen_range(0, 8) == 0 {
                 let candidates: Vec<usize> = source.iter()
                    .cloned()
-                   .filter(|s| occupancy.is_free(*s))
+                   .filter(|s| occupancy.is_unlocked(*s))
                    .collect();
                 if candidates.len() > 0 {
                     let location = rng.choose(&candidates).unwrap();
                     let destination_index = rng.gen_range(0, self.city.destinations.len());
                     let destination = self.city.destinations.get(destination_index).unwrap().clone();
                     traffic.vehicles.push(Vehicle{ location: *location, destination, destination_index });
+                    let start = self.block_size * (*location / self.block_size);
+                    for offset in 0..self.block_size {
+                        occupancy.lock(start + offset);
+                    }
                 }
             }
         }
