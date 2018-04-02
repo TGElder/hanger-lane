@@ -53,6 +53,7 @@ fn parse_symbol(x: usize, y: usize, text: &str) -> Vec<Transaction> {
                     => parse_road(x, y, entry, exit),
             ('S', direction) => vec![parse_source(x, y, direction, text[2..].parse::<usize>().unwrap())],
             ('D', direction) => vec![parse_destination(x, y, direction, text[2..].parse::<usize>().unwrap())],
+            ('T', direction) => vec![parse_traffic_light(x, y, direction, text[2..].parse::<usize>().unwrap())],
             (_, _) => panic!("Unknown symbol {}", text),
         },
     }
@@ -91,11 +92,17 @@ fn parse_destination(x: usize, y: usize, direction: char, group: usize) -> Trans
     Transaction::AddDestination(group, Cell::new(x, y, direction))
 }
 
+fn parse_traffic_light(x: usize, y: usize, direction: char, group: usize) -> Transaction {
+    let direction = get_direction(direction);
+    Transaction::AddTrafficLight(group, Cell::new(x, y, direction))
+}
+
 #[derive(PartialEq)]
 enum Transaction {
     AddRoad(Road),
     AddSource(usize, Cell),
     AddDestination(usize, Cell),
+    AddTrafficLight(usize, Cell),
 }
 
 fn apply(transaction: Transaction, mut city: City) -> City {
@@ -108,6 +115,10 @@ fn apply(transaction: Transaction, mut city: City) -> City {
         Transaction::AddDestination(group, cell) => {
             let index = city.get_index(&cell);
             city.destinations[group].push(index);
+        },
+        Transaction::AddTrafficLight(group, cell) => {
+            let index = city.get_index(&cell);
+            city.lights[group].push(index);
         },
     }
     city
@@ -175,6 +186,17 @@ mod tests {
     }
 
     #[test]
+    fn test_add_traffic_light() {
+        let mut city = City::new(4, 4);
+        city.lights.push(vec![]);
+        city.lights.push(vec![]);
+        let add_traffic_light = Transaction::AddTrafficLight(1, Cell{ x: 1, y: 3, d: Direction::South });
+        let city = apply(add_traffic_light, city);
+        assert!(city.lights[1].len() == 1);
+        assert!(city.get_cell(city.lights[1][0]) == Cell{ x: 1, y: 3, d: Direction::South});
+    }
+
+    #[test]
     fn test_parse_road_simple() {
         let transactions = parse_symbol(1, 3, ">v");
         assert!(transactions == vec![Transaction::AddRoad(Road::new(1, 3, Direction::East, Direction::South))]);
@@ -232,6 +254,12 @@ mod tests {
     fn test_parse_destination() {
         let transactions = parse_symbol(1, 3, "Dv7");
         assert!(transactions == vec![Transaction::AddDestination(7, Cell{ x: 1, y: 3, d: Direction::South })]);
+    }
+
+    #[test]
+    fn test_parse_traffic_light() {
+        let transactions = parse_symbol(1, 3, "Tv7");
+        assert!(transactions == vec![Transaction::AddTrafficLight(7, Cell{ x: 1, y: 3, d: Direction::South })]);
     }
 
     #[test]

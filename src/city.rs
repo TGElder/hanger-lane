@@ -32,13 +32,14 @@ pub struct City {
     pub roads: Vec<Road>,
     pub sources: Vec<Vec<usize>>,
     pub destinations: Vec<Vec<usize>>,
+    pub lights: Vec<Vec<usize>>,
 }
 
 use network::Edge;
 
 impl City {
     pub fn new(width: usize, height: usize) -> City {
-        City{ id: 0, width, height, roads: vec![], sources: vec![], destinations: vec![] }
+        City{ id: 0, width, height, roads: vec![], sources: vec![], destinations: vec![], lights: vec![] }
     }
 
     pub fn _with_all_roads(width: usize, height: usize) -> City {
@@ -55,7 +56,7 @@ impl City {
             }
         }
 
-        City { id: 0, width, height, roads, sources: vec![], destinations: vec![] }
+        City { id: 0, width, height, roads, sources: vec![], destinations: vec![], lights: vec![] }
     }
 
     fn forward(&self, &Cell{ref x, ref y, ref d}: &Cell) -> Option<Cell> {
