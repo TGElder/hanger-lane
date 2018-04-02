@@ -28,7 +28,7 @@ impl UI {
     
     pub fn launch() {
 
-        let mut f = File::open("roundabout-lights.csv").expect("File not found");
+        let mut f = File::open("hanger-lane.csv").expect("File not found");
         let mut contents = String::new();
         f.read_to_string(&mut contents).expect("Failed to read file");
         let city = create_city(&contents);
@@ -82,11 +82,11 @@ fn setup_simulation(city: &Arc<City>, occupancy: &mut Occupancy) -> Simulation {
     ];
     let update_vehicles = Box::new(UpdateVehicles{updates: vehicle_updates});
     let remove_vehicles = Box::new(RemoveVehicles{});
-    let delay = Box::new(Delay::new(50));
+    let delay = Box::new(Delay::new(0));
 
     if city.lights.len() > 0 {
         let traffic_lights = Box::new(TrafficLights::new(city.lights.clone(),
-            RefCell::new(Box::new(CounterTimer::new(vec![10, 5]))),
+            RefCell::new(Box::new(CounterTimer::new(vec![10, 100]))),
             occupancy));
         Simulation{ steps: vec![traffic_lights, add_vehicles, update_vehicles, remove_vehicles, delay] }
     }
@@ -106,7 +106,7 @@ impl SimulationStep for SpawnVehicles {
         let mut occupancy = state.occupancy;
         let mut rng = state.rng;
         for source in self.city.sources.iter() {
-            if rng.gen_range(0, 7) == 0 {
+            if rng.gen_range(0, 16) == 0 {
                 let candidates: Vec<usize> = source.iter()
                    .cloned()
                    .filter(|s| occupancy.is_unlocked(*s))

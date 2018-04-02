@@ -1,6 +1,7 @@
 use std::cell::{Cell, RefCell};
 use occupancy::Occupancy;
 use simulation::{SimulationState, SimulationStep};
+use std::collections::HashSet;
 
 pub trait Timer {
     fn ready(&mut self) -> bool;
@@ -35,8 +36,14 @@ impl TrafficLights {
     }
 
     fn lock_all(&self, occupancy: &mut Occupancy) {
-        for cycle in 0..self.nodes.len() {
-            self.lock(cycle, occupancy);
+        let mut unique = HashSet::new();
+        for nodes in self.nodes.iter() {
+            for node in nodes {
+                unique.insert(*node);
+            }
+        }
+        for node in unique.iter() {
+            occupancy.lock(*node);
         }
     }
 
@@ -85,12 +92,12 @@ mod tests {
     #[test]
     fn should_initialise_with_first_cycle_unlocked() {
         let mut occupancy = Occupancy::new(6);
-        TrafficLights::new(vec![vec![1, 3], vec![2, 4]],
+        TrafficLights::new(vec![vec![1, 3], vec![1, 4]],
                                                 RefCell::new(Box::new(MockTimer{})),
                                                 &mut occupancy);
         assert!(occupancy.is_unlocked(0));
         assert!(occupancy.is_unlocked(1));
-        assert!(!occupancy.is_unlocked(2));
+        assert!(occupancy.is_unlocked(2));
         assert!(occupancy.is_unlocked(3));
         assert!(!occupancy.is_unlocked(4));
         assert!(occupancy.is_unlocked(5));
@@ -101,7 +108,7 @@ mod tests {
         let traffic = Traffic{ id: 0, vehicles: vec![] };
         let rng: Box<Rng> = Box::new(rand::thread_rng());
         let mut occupancy = Occupancy::new(6);
-        let traffic_lights = TrafficLights::new(vec![vec![1, 3], vec![2, 4]],
+        let traffic_lights = TrafficLights::new(vec![vec![1, 3], vec![1, 4]],
                                                 RefCell::new(Box::new(MockTimer{})),
                                                 &mut occupancy);
         let mut state = SimulationState{ traffic, rng, occupancy };
@@ -109,7 +116,7 @@ mod tests {
         let occupancy = state.occupancy;
 
         assert!(occupancy.is_unlocked(0));
-        assert!(!occupancy.is_unlocked(1));
+        assert!(occupancy.is_unlocked(1));
         assert!(occupancy.is_unlocked(2));
         assert!(!occupancy.is_unlocked(3));
         assert!(occupancy.is_unlocked(4));
@@ -121,7 +128,7 @@ mod tests {
         let traffic = Traffic{ id: 0, vehicles: vec![] };
         let rng: Box<Rng> = Box::new(rand::thread_rng());
         let mut occupancy = Occupancy::new(6);
-        let traffic_lights = TrafficLights::new(vec![vec![1, 3], vec![2, 4]],
+        let traffic_lights = TrafficLights::new(vec![vec![1, 3], vec![1, 4]],
                                                 RefCell::new(Box::new(MockTimer{})),
                                                 &mut occupancy);
         let mut state = SimulationState{ traffic, rng, occupancy };
@@ -131,7 +138,7 @@ mod tests {
 
         assert!(occupancy.is_unlocked(0));
         assert!(occupancy.is_unlocked(1));
-        assert!(!occupancy.is_unlocked(2));
+        assert!(occupancy.is_unlocked(2));
         assert!(occupancy.is_unlocked(3));
         assert!(!occupancy.is_unlocked(4));
         assert!(occupancy.is_unlocked(5));
