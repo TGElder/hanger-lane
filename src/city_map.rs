@@ -24,6 +24,15 @@ pub fn create_city(text: &str) -> City {
     if let Some(group) = max_destination_group {
         city.destinations = vec![vec![]; group + 1];
     }
+    let max_light_group = transactions.iter().filter_map(|t| {
+        match t {
+            &Transaction::AddTrafficLight(group, _) => Some(group),
+            _ => None,
+        }
+    }).max();
+    if let Some(group) = max_destination_group {
+        city.lights = vec![vec![]; group + 1];
+    }
 
     for transaction in parse_map(text) {
         city = apply(transaction, city);
@@ -291,11 +300,12 @@ mod tests {
 
     #[test]
     fn test_create_city() {
-        let city = create_city(",D^13\nSv6,<<");
+        let city = create_city(",D^13 T<3\nSv6,<<");
         assert!(city.width == 2);
         assert!(city.height == 2);
         assert!(city.get_cell(city.sources[6][0]) == Cell::new(0, 1, Direction::South));
         assert!(city.get_cell(city.destinations[13][0]) == Cell::new(1, 0, Direction::North));
+        assert!(city.get_cell(city.lights[3][0]) == Cell::new(1, 0, Direction::West));
         assert!(city.roads == vec![Road::new(1, 1, Direction::West, Direction::West)]);
     }
 
