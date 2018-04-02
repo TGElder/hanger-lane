@@ -30,7 +30,7 @@ pub fn create_city(text: &str) -> City {
             _ => None,
         }
     }).max();
-    if let Some(group) = max_destination_group {
+    if let Some(group) = max_light_group {
         city.lights = vec![vec![]; group + 1];
     }
 

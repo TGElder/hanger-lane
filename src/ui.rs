@@ -18,6 +18,8 @@ use steps::delay::Delay;
 use std::fs::File;
 use std::io::prelude::*;
 use city_map::create_city;
+use steps::traffic_lights::{Timer, TrafficLights};
+use std::cell::RefCell;
 
 pub struct UI {
 }
@@ -26,7 +28,7 @@ impl UI {
     
     pub fn launch() {
 
-        let mut f = File::open("hanger-lane-ffa.csv").expect("File not found");
+        let mut f = File::open("roundabout-lights.csv").expect("File not found");
         let mut contents = String::new();
         f.read_to_string(&mut contents).expect("Failed to read file");
         let city = create_city(&contents);
@@ -44,9 +46,10 @@ impl UI {
         let sim_run_2 = Arc::clone(&sim_run);
         let sim_shutdown_2 = Arc::clone(&sim_shutdown);
         let sim_handle = thread::spawn(move || {
+            let mut occupancy = Occupancy::new(city.get_num_nodes());
             let city_arc = Arc::new(city);
-            let mut sim = Simulator::new(setup_simulation(&city_arc), &traffic_version, sim_run_2, sim_shutdown_2);
-            sim.run(setup_simulation_state(&city_arc));
+            let mut sim = Simulator::new(setup_simulation(&city_arc, &mut occupancy), &traffic_version, sim_run_2, sim_shutdown_2);
+            sim.run(setup_simulation_state(&city_arc, occupancy));
         });
 
         *sim_run.write().unwrap() = true;
@@ -60,13 +63,12 @@ impl UI {
     }
 }
 
-fn setup_simulation_state(city: &Arc<City>) -> SimulationState {
+fn setup_simulation_state(city: &Arc<City>, occupancy: Occupancy) -> SimulationState {
     let traffic = Traffic{ id: 0, vehicles: vec![] };
-    let occupancy = Occupancy::new(city.get_num_nodes());
     SimulationState{ traffic, occupancy, rng: Box::new(rand::thread_rng()) }
 }
 
-fn setup_simulation(city: &Arc<City>) -> Simulation {
+fn setup_simulation(city: &Arc<City>, occupancy: &mut Occupancy) -> Simulation {
     let network = Network::new(city.get_num_nodes(), &city.create_edges());
     let mut costs = Vec::with_capacity(city.destinations.len());
     for destination in city.destinations.iter() {
@@ -82,7 +84,15 @@ fn setup_simulation(city: &Arc<City>) -> Simulation {
     let remove_vehicles = Box::new(RemoveVehicles{});
     let delay = Box::new(Delay::new(50));
 
-    Simulation{ steps: vec![add_vehicles, update_vehicles, remove_vehicles, delay] }
+    if city.lights.len() > 0 {
+        let traffic_lights = Box::new(TrafficLights::new(city.lights.clone(),
+            RefCell::new(Box::new(CounterTimer::new(vec![10, 5]))),
+            occupancy));
+        Simulation{ steps: vec![traffic_lights, add_vehicles, update_vehicles, remove_vehicles, delay] }
+    }
+    else {
+        Simulation{ steps: vec![add_vehicles, update_vehicles, remove_vehicles, delay] }
+    }
 }
 
 pub struct SpawnVehicles {
@@ -96,7 +106,7 @@ impl SimulationStep for SpawnVehicles {
         let mut occupancy = state.occupancy;
         let mut rng = state.rng;
         for source in self.city.sources.iter() {
-            if rng.gen_range(0, 8) == 0 {
+            if rng.gen_range(0, 7) == 0 {
                 let candidates: Vec<usize> = source.iter()
                    .cloned()
                    .filter(|s| occupancy.is_unlocked(*s))
@@ -133,5 +143,30 @@ impl SimulationStep for RemoveVehicles {
         }
         traffic.vehicles = vehicles_next;
         SimulationState{traffic, occupancy, rng}
+    }
+}
+
+pub struct CounterTimer {
+    counter: usize,
+    cycle: usize,
+    targets: Vec<usize>,
+}
+
+impl CounterTimer {
+    pub fn new(targets: Vec<usize>) -> CounterTimer {
+        CounterTimer{ counter: 0, cycle: 0, targets }
+    }
+}
+
+impl Timer for CounterTimer {
+    fn ready(&mut self) -> bool {
+        let out = self.counter >= self.targets[self.cycle];
+        self.counter += 1;
+        out
+    }
+
+    fn reset(&mut self) {
+        self.counter = 0;
+        self.cycle = (self.cycle + 1) % self.targets.len();
     }
 }

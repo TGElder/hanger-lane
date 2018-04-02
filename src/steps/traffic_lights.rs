@@ -3,7 +3,7 @@ use occupancy::Occupancy;
 use simulation::{SimulationState, SimulationStep};
 
 pub trait Timer {
-    fn ready(&self) -> bool;
+    fn ready(&mut self) -> bool;
     fn reset(&mut self);
 }
 
@@ -74,7 +74,7 @@ mod tests {
     }
 
     impl Timer for MockTimer {
-        fn ready(&self) -> bool {
+        fn ready(&mut self) -> bool {
             true
         }
 
