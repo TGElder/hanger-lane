@@ -63,7 +63,6 @@ mod tests {
     #[test]
     fn double_lock() {
         let mut occupancy = Occupancy::new(10);
-        let mut occupancy = Occupancy::new(10);
         occupancy.remove_all_locks(7);
         occupancy.lock(7);
         occupancy.lock(7);

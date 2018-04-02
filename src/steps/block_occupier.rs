@@ -58,7 +58,6 @@ mod tests {
 
     #[test]
     fn free_then_occupy_start_of_range() {
-        let free = VehicleFree::new(3);
         let occupy = VehicleOccupy::new(3);
         let mut vehicle = Vehicle{ location: 0, destination: vec![1], destination_index: 0 };
         let mut occupancy = Occupancy::new(9);
@@ -72,7 +71,6 @@ mod tests {
 
     #[test]
     fn free_then_occupy_mid_range() {
-        let free = VehicleFree::new(4);
         let occupy = VehicleOccupy::new(4);
         let mut vehicle = Vehicle{ location: 5, destination: vec![6], destination_index: 0 };
         let mut occupancy = Occupancy::new(12);
@@ -87,7 +85,6 @@ mod tests {
 
     #[test]
     fn free_then_occupy_end_of_range() {
-        let free = VehicleFree::new(5);
         let occupy = VehicleOccupy::new(5);
         let mut vehicle = Vehicle{ location: 10, destination: vec![11], destination_index: 0 };
         let mut occupancy = Occupancy::new(15);
@@ -148,7 +145,6 @@ mod tests {
 
     #[test]
     fn should_not_occupy_destination() {
-        let free = VehicleFree::new(3);
         let occupy = VehicleOccupy::new(3);
         let mut vehicle = Vehicle{ location: 0, destination: vec![0, 1], destination_index: 0 };
         let mut occupancy = Occupancy::new(9);
