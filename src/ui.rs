@@ -28,7 +28,7 @@ impl UI {
     
     pub fn launch() {
 
-        let mut f = File::open("crossroads.csv").expect("File not found");
+        let mut f = File::open("simple-roundabout.csv").expect("File not found");
         let mut contents = String::new();
         f.read_to_string(&mut contents).expect("Failed to read file");
         let city = create_city(&contents);
