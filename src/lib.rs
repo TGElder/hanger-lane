@@ -2,14 +2,13 @@ extern crate rand;
 extern crate network;
 #[cfg(test)] #[macro_use] extern crate hamcrest;
 
-mod city;
-mod city_map;
-mod version;
-mod simulation;
-mod occupancy;
-mod graphics;
-mod steps;
-pub mod ui;
+pub mod city;
+pub mod city_map;
+pub mod version;
+pub mod simulation;
+pub mod occupancy;
+pub mod graphics;
+pub mod steps;
 
 const DIRECTIONS: [Direction; 4] = [Direction::North, Direction::East, Direction::South, Direction::West];
 
@@ -48,13 +47,13 @@ impl Cell {
 
 #[derive(Clone, Debug)]
 pub struct Vehicle {
-    location: usize,
-    destination: Vec<usize>,
-    destination_index: usize,
+    pub location: usize,
+    pub destination: Vec<usize>,
+    pub destination_index: usize,
 }
 
 #[derive(Clone, Debug)]
 pub struct Traffic {
-    id: usize,
-    vehicles: Vec<Vehicle>,
+    pub id: usize,
+    pub vehicles: Vec<Vehicle>,
 }

@@ -18,6 +18,7 @@ pub struct Graphics {
     traffic: Local<Traffic>,
     window: Window,
     graphics: GlGraphics,
+    grid_size: f64,
 }
 
 impl Graphics{
@@ -26,13 +27,15 @@ impl Graphics{
                traffic: &Version<Traffic>,
                title: &str,
                width: u32,
-               height: u32) -> Graphics {
+               height: u32,
+               grid_size: f64) -> Graphics {
         let opengl = OpenGL::V3_2;
         Graphics {
             city: Local::new(city),
             traffic: Local::new(traffic),
             window: Graphics::create_window(title, width, height, opengl),
             graphics: Graphics::create_graphics(opengl),
+            grid_size
         }
     }
 
@@ -79,12 +82,13 @@ impl Graphics{
     fn render(&mut self, args: &RenderArgs) {
         use graphics::graphics::clear;
         const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+        let grid_size = self.grid_size;
 
         if let Some(ref traffic) = self.traffic.local {
             if let Some(ref city) = self.city.local {
                 self.graphics.draw(args.viewport(), |c, gl| {
                     clear(WHITE, gl);
-                    render_traffic(city, traffic, gl, &c);
+                    render_traffic(city, traffic, gl, &c, grid_size);
                 })
             }
         }
@@ -92,10 +96,14 @@ impl Graphics{
     }
 }
 
-fn render_traffic(city: &City, traffic: &Traffic, graphics: &mut GlGraphics, context: &Context) {
+fn render_traffic(city: &City,
+                  traffic: &Traffic,
+                  graphics: &mut GlGraphics,
+                  context: &Context,
+                  grid_size: f64) {
+
     use graphics::graphics::rectangle;
 
-    const VEHICLE_SIZE: f64 = 12.0;
     const COLOURS: [[f32; 4]; 64] = [
         [0.45, 0.11, 0.72, 1.0],
         [0.43, 0.44, 0.17, 1.0],
@@ -165,7 +173,7 @@ fn render_traffic(city: &City, traffic: &Traffic, graphics: &mut GlGraphics, con
 
     for vehicle in traffic.vehicles.iter() {
         let cell = city.get_cell(vehicle.location);
-        let square = rectangle::square(cell.x as f64 * VEHICLE_SIZE, cell.y as f64 * VEHICLE_SIZE, VEHICLE_SIZE);
+        let square = rectangle::square(cell.x as f64 * grid_size, cell.y as f64 * grid_size, grid_size);
         rectangle(COLOURS[vehicle.destination_index % 64], square, context.transform, graphics);
 
     }

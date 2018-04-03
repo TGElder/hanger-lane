@@ -11,5 +11,6 @@ pistoncore-glutin_window = "0.43.0"
 piston2d-opengl_graphics = "0.50.0"
 network = { path = "network" }
 hamcrest = "*"
+clap = "~2.31"
 
 [workspace]

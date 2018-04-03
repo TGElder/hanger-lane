@@ -44,7 +44,7 @@ impl City {
 
     pub fn _with_all_roads(width: usize, height: usize) -> City {
 
-        let mut roads = Vec::with_capacity((width * height * 12));
+        let mut roads = Vec::with_capacity(width * height * 12);
 
         for exit in DIRECTIONS.iter() {
             for entry in DIRECTIONS.iter().filter(|d| *exit != get_opposite(*d)) {
