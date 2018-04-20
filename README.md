@@ -6,7 +6,7 @@ The executable requires a map file. `hanger-lane.csv` is provided as an example;
 
 ![Screenshot](demo.gif)
 
-Run `cargo run --release hanger-lane.csv` to see it in action.
+Run `cargo run --release hanger-lane.csv` to run it properly.
 
 A map file is grid of cells. Each cell can contain any number of the following, separated by spaces.
 
