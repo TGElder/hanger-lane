@@ -52,3 +52,7 @@ Destination selection also works at the destination group level. If there is one
 When the program starts, Dijkstra's algorithm is used to calculate the direction (at every cell on the map) to travel in order to reach every destination in the lowest number of steps.
 
 Vehicles follow this path until it is blocked by another vehicle. In this case, they are able to lookahead a number of cells (controlled by `--lookahead`) to find another cell that is closer to the destination than their current cell. If such a cell exists, the vehicle will move towards it - even if this means temporarily moving to a cell that is further from the destination.
+
+# Visualisation
+
+The visualisation is simple. Vehicles are shown as solid squares, coloured according to their destination. Destinations are shown as hollow squares. Light grey areas have a road leading out of them, dark grey areas do not.
