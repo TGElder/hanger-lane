@@ -3,7 +3,9 @@ This is a basic traffic simulator which I wrote to learn Rust. You can build wit
 # Map
 
 The executable requires a map file. `hanger-lane.csv` is provided as an example; this is an approximation of the Hanger Lane Gyratory in West London. 
+
 ![Screenshot](screenshot.png)
+
 Run `cargo run --release hanger-lane.csv` to see it in action.
 
 A map file is grid of cells. Each cell can contain any number of the following, separated by spaces.
