@@ -1,5 +1,7 @@
 This is a basic traffic simulator which I wrote to learn Rust. You can build with `cargo build --release` and use the `--help` option to see usage of the resulting executable.
 
+**September 2021 Update** I have made two minor commits, one to get the code working in Rust 1.55.0 and another to add this message. Otherwise this project is dormant. I have learnt a lot more since writing this (primarily through work in my [rust](https://github.com/TGElder/rust) repository) and would doubtless approach things differently were I to approach this again. When compiling I saw many clippy lints that I will not fix. 
+
 # Map
 
 The executable requires a map file. `hanger-lane.csv` is provided as an example; this is an approximation of the Hanger Lane Gyratory in West London. 
